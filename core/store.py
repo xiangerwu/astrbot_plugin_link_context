@@ -44,6 +44,12 @@ class Store:
         ).fetchone()
         return bool(row and row[0] in ("pending", "ready"))
 
+    def state(self, scope, url):
+        row = self.db.execute(
+            "SELECT state FROM links WHERE scope=? AND url=?", (scope, url)
+        ).fetchone()
+        return row[0] if row else None
+
     def prune(self, hours):
         self.db.execute("DELETE FROM links WHERE seen<?", (time.time() - hours * 3600,))
         self.db.commit()

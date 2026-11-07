@@ -55,6 +55,42 @@ class LinkContextPlugin(Star):
         # ponytail: one bounded worker; add parallel workers only if measured backlog requires it.
         self.worker = asyncio.create_task(self.consume(), name="link-context-reader")
 
+    # Run before observe(), so command URLs are not also queued as ordinary shares.
+    @filter.command("link_reread", priority=maxsize + 1)
+    async def reread(self, event: AstrMessageEvent, url: str = ""):
+        """重新讀取目前群聊已有的連結記錄。用法：/link_reread 完整網址"""
+        event.stop_event()
+        if not event.get_group_id():
+            yield event.plain_result("請在原本分享連結的群組／頻道使用此指令。")
+            return
+        urls = links_in(url)
+        if len(urls) != 1:
+            yield event.plain_result("用法：/link_reread 完整的 HTTP(S) 網址")
+            return
+        url = urls[0]
+        scope = event.unified_msg_origin
+        try:
+            state = self.store.state(scope, url)
+            if state is None:
+                message = "此聊天沒有這個連結的記錄；請先在此聊天分享連結。"
+            elif state == "pending":
+                message = "這個連結已在排隊或讀取中，沒有重複排入。"
+            elif self.queue.full():
+                message = "讀取佇列已滿，請稍後重試；舊記錄仍保留。"
+            else:
+                self.store.put(
+                    scope,
+                    url,
+                    event.get_sender_name(),
+                    "pending",
+                    "正在重新讀取；舊內容已被取代，目前尚無新結果。",
+                )
+                self.queue.put_nowait((scope, url))
+                message = "已排入重新讀取；圖片會再次呼叫模型。完成後可在此聊天詢問，無自動完成通知。"
+        except sqlite3.Error:
+            message = "閱讀記錄資料庫暫時不可用，本次沒有排入重新讀取。"
+        yield event.plain_result(message)
+
     # Queue before AstrBot's group-chat handler (maxsize - 2) can request a reply.
     @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE, priority=maxsize)
     async def observe(self, event: AstrMessageEvent):

@@ -501,6 +501,7 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
             return register
 
         modules["astrbot.api.event"].filter = types.SimpleNamespace(
+            command=decorator,
             event_message_type=decorator,
             on_llm_request=decorator,
             llm_tool=decorator,
@@ -585,6 +586,111 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
                 await plugin.inject(event, req)
                 self.assertIn("正文", req.extra_user_content_parts[0].text)
                 self.assertTrue(req.extra_user_content_parts[0].temporary)
+
+                # Dispatch the real command before observe()/chat, as AstrBot does.
+                command_event = types.SimpleNamespace(
+                    **vars(event),
+                    get_group_id=lambda: "111",
+                    stopped=False,
+                    plain_result=lambda text: text,
+                )
+                command_event.stop_event = lambda: setattr(
+                    command_event, "stopped", True
+                )
+
+                async def dispatch_reread(url):
+                    command_event.stopped = False
+                    command_event.message_str = f"/link_reread {url}"
+                    replies = []
+                    for _, handler in sorted(
+                        [
+                            (handler_priorities["reread"], plugin.reread),
+                            (handler_priorities["observe"], plugin.observe),
+                            (sys.maxsize - 2, builtin_group_chat),
+                        ],
+                        key=lambda item: -item[0],
+                    ):
+                        if command_event.stopped:
+                            break
+                        if handler == plugin.reread:
+                            replies.extend(
+                                [reply async for reply in handler(command_event, url)]
+                            )
+                        else:
+                            await handler(command_event)
+                    self.assertTrue(command_event.stopped)
+                    self.assertEqual(len(replies), 1)
+                    return replies[0]
+
+                url = event.message_str
+                # A record outside the recent-20 list must still be refreshable.
+                for i in range(21):
+                    plugin.store.put(
+                        event.unified_msg_origin,
+                        f"https://example.com/{i}",
+                        "Alice",
+                        "ready",
+                        "old",
+                    )
+                self.assertNotIn(
+                    url,
+                    [row[0] for row in plugin.store.recent(event.unified_msg_origin)],
+                )
+                for invalid in ("", "http://127.0.0.1/a", "not-a-url"):
+                    self.assertIn("用法", await dispatch_reread(invalid))
+                    self.assertTrue(plugin.queue.empty())
+
+                # Queue capacity failure must not discard a completed record.
+                with patch.object(plugin.queue, "full", return_value=True):
+                    self.assertIn("舊記錄仍保留", await dispatch_reread(url))
+                self.assertEqual(
+                    plugin.store.state(event.unified_msg_origin, url), "ready"
+                )
+
+                # Block the fetch boundary to exercise duplicate requests in flight.
+                started, release = asyncio.Event(), asyncio.Event()
+
+                async def refreshed(_):
+                    started.set()
+                    await release.wait()
+                    return fetch.Page(url, text="重新分析的新內容")
+
+                with patch.object(
+                    plugin.reader, "read", side_effect=refreshed
+                ) as reader:
+                    self.assertIn("已排入", await dispatch_reread(f"<{url}>"))
+                    self.assertEqual(plugin.queue.qsize(), 1)
+                    self.assertEqual(
+                        plugin.store.state(event.unified_msg_origin, url), "pending"
+                    )
+                    await asyncio.wait_for(started.wait(), 3)
+                    self.assertIn("沒有重複", await dispatch_reread(url))
+                    self.assertTrue(plugin.queue.empty())
+                    release.set()
+                    await asyncio.wait_for(plugin.queue.join(), 3)
+                    reader.assert_awaited_once()
+                self.assertIn(
+                    "重新分析的新內容",
+                    plugin.store.context(event.unified_msg_origin, 24, 18000),
+                )
+
+                command_event.unified_msg_origin = "discord-main:GroupMessage:other"
+                self.assertIn("沒有", await dispatch_reread(url))
+                self.assertTrue(plugin.queue.empty())
+                self.assertIsNone(
+                    plugin.store.state(command_event.unified_msg_origin, url)
+                )
+                command_event.unified_msg_origin = event.unified_msg_origin
+                with patch.object(
+                    plugin.store, "put", side_effect=sqlite3.OperationalError("busy")
+                ):
+                    self.assertIn("沒有排入", await dispatch_reread(url))
+                self.assertTrue(plugin.queue.empty())
+                self.assertEqual(
+                    plugin.store.state(event.unified_msg_origin, url), "ready"
+                )
+                command_event.get_group_id = lambda: ""
+                self.assertIn("群組", await dispatch_reread(url))
 
                 plugin.store.finish(
                     event.unified_msg_origin, event.message_str, "ready", "x" * 15000
