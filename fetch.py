@@ -22,7 +22,12 @@ class ReadError(Exception):
 def checked_url(url: str) -> str:
     try:
         p = urlsplit(url)
-        if p.scheme not in ("http", "https") or not p.hostname or p.username or p.password:
+        if (
+            p.scheme not in ("http", "https")
+            or not p.hostname
+            or p.username
+            or p.password
+        ):
             raise ValueError
         if p.port not in (None, 80, 443):
             raise ValueError
@@ -47,7 +52,7 @@ def host_is(url: str, domain: str) -> bool:
 
 def links_in(text: str) -> list[str]:
     links = []
-    for match in re.finditer(r"https?://[^\s<>\"\u3000]+", text):
+    for match in re.finditer(r"https?://[^\s<>\"`|\u3000]+", text):
         raw = match.group().rstrip("。，、！？；：.,!?;:'\"》】」』")
         while raw.endswith(")") and raw.count(")") > raw.count("("):
             raw = raw[:-1]
@@ -65,7 +70,9 @@ class PublicResolver(DefaultResolver):
     async def resolve(self, host, port=0, family=socket.AF_INET):
         records = await super().resolve(host, port, family)
         # Check the exact addresses the connector will use, including redirects.
-        if not records or any(not ipaddress.ip_address(r["host"]).is_global for r in records):
+        if not records or any(
+            not ipaddress.ip_address(r["host"]).is_global for r in records
+        ):
             raise ReadError("網域解析到非公開位址，已拒絕連線")
         return records
 
@@ -87,18 +94,27 @@ class Web:
     def headers(self, url: str) -> dict[str, str]:
         headers = {}
         for domain, cookie in self.cookies.items():
-            if cookie and host_is(url, domain):
+            # A pasted http URL or HTTPS-to-HTTP redirect must not expose a login Cookie.
+            if cookie and urlsplit(url).scheme == "https" and host_is(url, domain):
                 headers["Cookie"] = cookie
         if host_is(url, "ptt.cc"):
             headers["Cookie"] = "over18=1"
-        if host_is(url, "bilibili.com") or host_is(url, "bilivideo.com") or host_is(url, "hdslb.com"):
+        if (
+            host_is(url, "bilibili.com")
+            or host_is(url, "bilivideo.com")
+            or host_is(url, "hdslb.com")
+        ):
             headers["Referer"] = "https://www.bilibili.com/"
         return headers
 
-    async def read(self, url: str, *, limit=4 * 1024 * 1024, destination: Path | None = None):
+    async def read(
+        self, url: str, *, limit=4 * 1024 * 1024, destination: Path | None = None
+    ):
         for _ in range(6):
             url = checked_url(url)
-            async with self.session.get(url, headers=self.headers(url), allow_redirects=False) as response:
+            async with self.session.get(
+                url, headers=self.headers(url), allow_redirects=False
+            ) as response:
                 if response.status in (301, 302, 303, 307, 308):
                     url = urljoin(url, response.headers.get("Location", ""))
                     continue
@@ -152,9 +168,13 @@ class Reader:
             url, _, _ = await self.web.read(url)
         if host_is(url, "x.com") or host_is(url, "twitter.com"):
             return await self.twitter(url)
-        if host_is(url, "bilibili.com") and (host_is(url, "t.bilibili.com") or "/opus/" in urlsplit(url).path):
+        if host_is(url, "bilibili.com") and (
+            host_is(url, "t.bilibili.com") or "/opus/" in urlsplit(url).path
+        ):
             return await self.bilibili_post(url)
-        if host_is(url, "bilibili.com") and re.search(r"/(?:video/|BV|av)", urlsplit(url).path):
+        if host_is(url, "bilibili.com") and re.search(
+            r"/(?:video/|BV|av)", urlsplit(url).path
+        ):
             return await self.bilibili(url)
         if host_is(url, "threads.net") or host_is(url, "threads.com"):
             return await self.threads(url)
@@ -183,8 +203,10 @@ class Reader:
             text += "\n引用貼文：" + quote["text"]
         media = tweet.get("media") or {}
         return Page(
-            url=url, title=article.get("title") or "X 貼文",
-            author=(tweet.get("author") or {}).get("screen_name", ""), text=text,
+            url=url,
+            title=article.get("title") or "X 貼文",
+            author=(tweet.get("author") or {}).get("screen_name", ""),
+            text=text,
             images=[p["url"] for p in media.get("photos", []) if p.get("url")],
             has_video=bool(media.get("videos")),
             notes=["X 內容經第三方 FxEmbed 讀取，只能取得該服務可見的公開內容。"],
@@ -195,11 +217,18 @@ class Reader:
         if not match:
             raise ReadError("無法辨識 Bilibili 影片 ID")
         key = f"bvid={match[1]}" if match[1].startswith("BV") else f"aid={match[1][2:]}"
-        info = await self.web.json("https://api.bilibili.com/x/web-interface/view?" + key)
+        info = await self.web.json(
+            "https://api.bilibili.com/x/web-interface/view?" + key
+        )
         if info.get("code") != 0:
             raise ReadError("Bilibili 未提供影片資訊，可能需要有效 Cookie")
         data = info["data"]
-        page = Page(url, data.get("title", ""), (data.get("owner") or {}).get("name", ""), data.get("desc", ""))
+        page = Page(
+            url,
+            data.get("title", ""),
+            (data.get("owner") or {}).get("name", ""),
+            data.get("desc", ""),
+        )
         page.has_video = True
         page.images = [data["pic"]] if data.get("pic") else []
         page.notes.append("僅影片標題、作者、簡介與封面；封面描述不能當作影片內容。")
@@ -209,24 +238,32 @@ class Reader:
         match = re.fullmatch(r"/(?:opus/)?(\d+)/?", urlsplit(url).path)
         if not match:
             raise ReadError("請提供 Bilibili 單篇動態／Opus 連結")
-        data = await self.web.json("https://api.bilibili.com/x/polymer/web-dynamic/v1/detail?id=" + match[1])
+        data = await self.web.json(
+            "https://api.bilibili.com/x/polymer/web-dynamic/v1/detail?id=" + match[1]
+        )
         item = (data.get("data") or {}).get("item") or {}
         if data.get("code") != 0 or str(item.get("id_str")) != match[1]:
             raise ReadError("Bilibili 未提供目標圖文動態，請檢查連結或 Cookie")
         page = Page(url, "Bilibili 圖文動態")
-        for post in [item] + ([item["orig"]] if isinstance(item.get("orig"), dict) else []):
+        for post in [item] + (
+            [item["orig"]] if isinstance(item.get("orig"), dict) else []
+        ):
             modules = post.get("modules") or {}
             author = (modules.get("module_author") or {}).get("name", "")
             dynamic = modules.get("module_dynamic") or {}
             major = dynamic.get("major") or {}
             opus = major.get("opus") or {}
-            text = (dynamic.get("desc") or {}).get("text") or (opus.get("summary") or {}).get("text", "")
+            text = (dynamic.get("desc") or {}).get("text") or (
+                opus.get("summary") or {}
+            ).get("text", "")
             label = "正文" if post is item else "引用動態"
             page.text += f"\n{label}（{author}）：{text}"
             if post is item:
                 page.author = author
                 page.title = opus.get("title") or page.title
-            for picture in (major.get("draw") or {}).get("items", []) + opus.get("pics", []):
+            for picture in (major.get("draw") or {}).get("items", []) + opus.get(
+                "pics", []
+            ):
                 source = picture.get("src") or picture.get("url")
                 if source:
                     page.images.append(urljoin(url, source))
@@ -247,17 +284,34 @@ class Reader:
                 cookies = SimpleCookie()
                 cookies.load(self.web.cookies.get("threads.com", ""))
                 if cookies:
-                    await context.add_cookies([
-                        {"name": key, "value": value.value, "domain": "." + domain, "path": "/", "secure": True}
-                        for key, value in cookies.items() for domain in ("threads.com", "threads.net")
-                    ])
+                    await context.add_cookies(
+                        [
+                            {
+                                "name": key,
+                                "value": value.value,
+                                "domain": "." + domain,
+                                "path": "/",
+                                "secure": True,
+                            }
+                            for key, value in cookies.items()
+                            for domain in ("threads.com", "threads.net")
+                        ]
+                    )
 
                 async def route_request(route):
                     req = route.request
-                    if req.resource_type in ("image", "media", "font") or req.method != "GET":
+                    if (
+                        req.resource_type in ("image", "media", "font")
+                        or req.method != "GET"
+                    ):
                         await route.abort()
                         return
-                    allowed = ("threads.com", "threads.net", "cdninstagram.com", "fbcdn.net")
+                    allowed = (
+                        "threads.com",
+                        "threads.net",
+                        "cdninstagram.com",
+                        "fbcdn.net",
+                    )
                     if not any(host_is(req.url, h) for h in allowed):
                         await route.abort()
                         return
@@ -276,7 +330,14 @@ class Reader:
                     if match:
                         data = await page.evaluate(THREADS_POST, match[1])
                         if data:
-                            return Page(page.url, "Threads 貼文", data["author"], data["text"], data["images"], bool(data["videos"]))
+                            return Page(
+                                page.url,
+                                "Threads 貼文",
+                                data["author"],
+                                data["text"],
+                                data["images"],
+                                bool(data["videos"]),
+                            )
                     await asyncio.sleep(1)
                 return threads_preview(page.url, await page.content())
             finally:
@@ -312,34 +373,86 @@ def threads_preview(url: str, html: str) -> Page:
     expected = re.search(r"/post/([\w-]+)", urlsplit(url).path)
     actual = canonical.get("content", "") if canonical else ""
     identity = re.search(r"/post/([\w-]+)", urlsplit(actual).path)
-    if not (expected and identity and expected[1] == identity[1]
-            and any(host_is(actual, host) for host in ("threads.com", "threads.net"))
-            and description and description.get("content", "").strip()):
+    if not (
+        expected
+        and identity
+        and expected[1] == identity[1]
+        and any(host_is(actual, host) for host in ("threads.com", "threads.net"))
+        and description
+        and description.get("content", "").strip()
+    ):
         raise ReadError("Threads 未取得可核對的貼文正文；可能是登入限制或網頁改版")
     title = soup.find("meta", property="og:title")
     # og:image can be the author's avatar, so it is not evidence of a post image.
-    return Page(url, title.get("content", "Threads 貼文") if title else "Threads 貼文",
-                text=description["content"],
-                notes=["僅取得這篇 Threads 的公開預覽文字，可能截斷；正文、配圖、回覆與影片均未確認。"])
+    return Page(
+        url,
+        title.get("content", "Threads 貼文") if title else "Threads 貼文",
+        text=description["content"],
+        notes=[
+            "僅取得這篇 Threads 的公開預覽文字，可能截斷；正文、配圖、回覆與影片均未確認。"
+        ],
+    )
 
 
 def parse_html(url: str, body: bytes) -> Page:
     soup = BeautifulSoup(body, "html.parser", from_encoding="utf-8")
+
     def meta(key):
         tag = soup.find("meta", property=key) or soup.find("meta", attrs={"name": key})
         return tag.get("content", "") if tag else ""
-    title = meta("og:title") or (soup.title.get_text(" ", strip=True) if soup.title else "")
+
+    title = meta("og:title") or (
+        soup.title.get_text(" ", strip=True) if soup.title else ""
+    )
     page = Page(url, title, meta("author"))
-    root = soup.select_one("#main-content") if host_is(url, "ptt.cc") else soup.find("article") or soup.find("main") or soup.body
+    root = (
+        soup.select_one("#main-content")
+        if host_is(url, "ptt.cc")
+        else soup.find("article") or soup.find("main") or soup.body
+    )
     if root is None:
         raise ReadError("網頁沒有可讀取的正文")
     for tag in root.select("script, style, nav, footer, header, noscript, form"):
         tag.decompose()
     page.text = root.get_text("\n", strip=True)
-    page.images = list(dict.fromkeys(urljoin(url, img["src"]) for img in root.find_all("img", src=True)))
-    page.has_video = bool(root.find("video") or meta("og:video") or meta("og:video:url"))
+    page.images = list(
+        dict.fromkeys(
+            urljoin(url, img["src"]) for img in root.find_all("img", src=True)
+        )
+    )
+    if host_is(url, "ptt.cc"):
+        # PTT often exposes article pictures as text/anchors, not img elements (Ermiana).
+        candidates = links_in(page.text) + [
+            urljoin(url, a["href"]) for a in root.find_all("a", href=True)
+        ]
+        page.images = list(
+            dict.fromkeys(
+                page.images
+                + [
+                    source
+                    for source in candidates
+                    if re.search(
+                        r"\.(?:jpe?g|png|gif|webp)$",
+                        urlsplit(source).path,
+                        re.IGNORECASE,
+                    )
+                ]
+            )
+        )
+        for line in root.select(".article-metaline"):
+            label, value = (
+                line.select_one(".article-meta-tag"),
+                line.select_one(".article-meta-value"),
+            )
+            if label and value and label.get_text(strip=True) == "作者":
+                page.author = value.get_text(strip=True)
+    page.has_video = bool(
+        root.find("video") or meta("og:video") or meta("og:video:url")
+    )
     if not page.text and not page.images and not page.has_video:
         raise ReadError("網頁沒有可理解的內容")
     if not host_is(url, "ptt.cc"):
-        page.notes.append("一般網頁以可取得的 HTML 正文為準，動態載入／登入後內容可能缺漏。")
+        page.notes.append(
+            "一般網頁以可取得的 HTML 正文為準，動態載入／登入後內容可能缺漏。"
+        )
     return page

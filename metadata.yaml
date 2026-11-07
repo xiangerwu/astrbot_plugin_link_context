@@ -2,5 +2,6 @@ name: astrbot_plugin_link_context
 display_name: 靜默連結閱讀
 desc: 群組分享連結時背景閱讀正文與圖片，將內容提供給 AI 對話，不自動轉發；影片僅讀標題、簡介與封面。
 version: 0.1.0
-author: wzx
+author: xiangerwu
+repo: https://github.com/xiangerwu/astrbot_plugin_link_context
 astrbot_version: '>=4.29.4'

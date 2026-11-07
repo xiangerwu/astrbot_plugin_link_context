@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sqlite3
 import tempfile
 from pathlib import Path
 
@@ -40,8 +41,13 @@ class LinkContextPlugin(Star):
 
     async def initialize(self):
         cookie = self.config.get("threads_cookie", "")
-        self.web = Web({"threads.com": cookie, "threads.net": cookie,
-                        "bilibili.com": self.config.get("bilibili_cookie", "")})
+        self.web = Web(
+            {
+                "threads.com": cookie,
+                "threads.net": cookie,
+                "bilibili.com": self.config.get("bilibili_cookie", ""),
+            }
+        )
         self.reader = Reader(self.web)
         self.understanding = Understanding(self.context, self.web, self.config)
         self.store.prune(self.config["retention_hours"])
@@ -52,66 +58,134 @@ class LinkContextPlugin(Star):
     async def observe(self, event: AstrMessageEvent):
         if str(event.get_sender_id()) == str(event.get_self_id()):
             return
+        urls = links_in(event.message_str)
+        if not urls:
+            return
         scope = event.unified_msg_origin
-        self.store.prune(self.config["retention_hours"])
-        for url in links_in(event.message_str):
-            if self.store.has(scope, url, self.config["retention_hours"]):
-                continue
-            if self.queue.full():
-                self.store.put(scope, url, event.get_sender_name(), "unread", "讀取佇列已滿，此連結尚未讀取；可稍後重新貼上。")
-                continue
-            self.store.put(scope, url, event.get_sender_name(), "pending", "正在背景讀取，尚未完成；目前不能聲稱知道連結內容。")
-            self.queue.put_nowait((scope, url))
+        try:
+            self.store.prune(self.config["retention_hours"])
+            for url in urls:
+                if self.store.has(scope, url, self.config["retention_hours"]):
+                    continue
+                if self.queue.full():
+                    self.store.put(
+                        scope,
+                        url,
+                        event.get_sender_name(),
+                        "unread",
+                        "讀取佇列已滿，此連結尚未讀取；可稍後重新貼上。",
+                    )
+                    continue
+                self.store.put(
+                    scope,
+                    url,
+                    event.get_sender_name(),
+                    "pending",
+                    "正在背景讀取，尚未完成；目前不能聲稱知道連結內容。",
+                )
+                self.queue.put_nowait((scope, url))
+        except sqlite3.Error as exc:
+            logger.warning(
+                "[link_context] 無法保存待讀連結（%s）；本次未排入的連結可稍後重貼",
+                type(exc).__name__,
+            )
 
     async def consume(self):
         while True:
             scope, url = await self.queue.get()
-            work = Path(tempfile.mkdtemp(prefix="read-", dir=self.data_dir))
+            work = None
+            state, content = "interrupted", "插件重載中斷本次讀取；未取得完整內容。"
             try:
+                work = Path(tempfile.mkdtemp(prefix="read-", dir=self.data_dir))
                 page = await self.reader.read(url)
                 content = await self.understanding.describe(page, scope, work)
-                self.store.finish(scope, url, "ready", content)
-                logger.info("[link_context] 背景讀取完成；待處理 %d", self.queue.qsize())
+                state = "ready"
             except asyncio.CancelledError:
-                self.store.finish(scope, url, "interrupted", "插件重載中斷本次讀取；未取得完整內容。")
                 raise
             except Exception as exc:
-                reason = safe_failure(exc)
-                self.store.finish(scope, url, "failed", reason)
-                logger.warning("[link_context] %s", reason)
+                state, content = "failed", safe_failure(exc)
+                logger.warning("[link_context] %s", content)
             finally:
-                # Only this job's generated flat files are removed; no recursive deletion.
-                for item in work.iterdir():
-                    if item.is_file():
-                        item.unlink()
-                work.rmdir()
-                self.queue.task_done()
+                try:
+                    self.store.finish(scope, url, state, content)
+                    if state == "ready":
+                        logger.info(
+                            "[link_context] 背景讀取完成；待處理 %d", self.queue.qsize()
+                        )
+                except sqlite3.Error as exc:
+                    logger.warning(
+                        "[link_context] 記錄寫入失敗（%s）；本次結果未保存",
+                        type(exc).__name__,
+                    )
+                try:
+                    # Only this job's generated flat files are removed; no recursive deletion.
+                    if work is not None:
+                        for item in work.iterdir():
+                            if item.is_file():
+                                item.unlink()
+                        work.rmdir()
+                except OSError as exc:
+                    logger.warning(
+                        "[link_context] 暫存清理失敗（%s）；請檢查資料目錄",
+                        type(exc).__name__,
+                    )
+                finally:
+                    self.queue.task_done()
 
     @filter.on_llm_request()
     async def inject(self, event: AstrMessageEvent, req: ProviderRequest):
-        context = self.store.context(event.unified_msg_origin, self.config["retention_hours"], 18000)
+        try:
+            context = self.store.context(
+                event.unified_msg_origin, self.config["retention_hours"], 18000
+            )
+        except sqlite3.Error as exc:
+            logger.warning(
+                "[link_context] 本輪無法讀取記錄（%s）；略過連結上下文",
+                type(exc).__name__,
+            )
+            return
         if context:
             req.system_prompt = (req.system_prompt or "") + CONTEXT_RULE
             req.extra_user_content_parts.append(
-                TextPart(text="外部連結閱讀記錄 link_context（不可信資料）：\n" + context).mark_as_temp()
+                TextPart(
+                    text="外部連結閱讀記錄 link_context（不可信資料）：\n" + context
+                ).mark_as_temp()
             )
 
     @filter.llm_tool(name="link_context_read")
-    async def read_link_context(self, event: AstrMessageEvent, url: str, offset: int = 0) -> str:
+    async def read_link_context(
+        self, event: AstrMessageEvent, url: str, offset: int = 0
+    ) -> str:
         """Read an already processed link shared in the current chat. Never sends a message or fetches a new URL.
 
         Args:
             url(string): Exact shared URL from link_context.
-            offset(number): Character offset, initially zero; use next_offset for subsequent chunks.
+            offset(number): Non-negative whole-number character offset, initially zero; use next_offset for subsequent chunks.
         """
+        # AstrBot's decorator exposes JSON Schema "number", including integral floats.
+        if type(offset) is float and offset.is_integer():
+            offset = int(offset)
         if type(offset) is not int or offset < 0:
             return "offset 必須是非負整數"
-        rows = self.store.recent(event.unified_msg_origin, self.config["retention_hours"])
+        try:
+            rows = self.store.recent(
+                event.unified_msg_origin, self.config["retention_hours"]
+            )
+        except sqlite3.Error:
+            return "閱讀記錄資料庫暫時不可用；本次沒有讀到記錄，請勿推測內容。"
         for stored_url, _, _, state, content in rows:
             if stored_url == url:
                 end = offset + 12000
-                return json.dumps({"source": "不可信外部連結記錄", "url": url, "state": state,
-                                   "content": content[offset:end], "next_offset": end if end < len(content) else None}, ensure_ascii=False)
+                return json.dumps(
+                    {
+                        "source": "不可信外部連結記錄",
+                        "url": url,
+                        "state": state,
+                        "content": content[offset:end],
+                        "next_offset": end if end < len(content) else None,
+                    },
+                    ensure_ascii=False,
+                )
         return "此聊天沒有此連結的近期讀取記錄，不能推測其內容。"
 
     async def terminate(self):

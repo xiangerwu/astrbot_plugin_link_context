@@ -18,20 +18,20 @@
     "type": "int",
     "default": 24,
     "slider": {"min": 1, "max": 720, "step": 1},
-    "hint": "依 AstrBot 的會話來源隔離，預設保留 24 小時。聊天可讀最近 20 個連結，重啟後仍保留已完成記錄。"
+    "hint": "依會話來源隔離，最多選取最近 20 筆再依上下文預算裁短。過期記錄不供聊天讀取；啟動或收到連結時清理，不定時刪除。重啟仍保留已完成記錄。"
   },
   "bilibili_cookie": {
     "description": "Bilibili Cookie（選填）",
     "type": "string",
     "default": "",
     "secret": true,
-    "hint": "只傳給 bilibili.com 及其子網域，不會傳給圖片 CDN。不要貼在群組。"
+    "hint": "只傳給 bilibili.com 及其子網域的 HTTPS 網址，不會傳給圖片 CDN 或 HTTP。不要貼在群組；配置遮罩不代表儲存加密。"
   },
   "threads_cookie": {
     "description": "Threads Cookie（選填）",
     "type": "string",
     "default": "",
     "secret": true,
-    "hint": "只傳給 threads.com／threads.net。登入或反自動化限制仍可能使貼文無法讀取。"
+    "hint": "只傳給 threads.com／threads.net 及其子網域的 HTTPS 網址。登入或反自動化限制仍可能使貼文無法讀取；配置遮罩不代表儲存加密。"
   }
 }
