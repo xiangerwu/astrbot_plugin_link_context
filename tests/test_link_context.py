@@ -1,4 +1,4 @@
-"""Run: python -m unittest discover -s . -p 'test_*.py' -v.
+"""Run: python -m unittest discover -s tests -p 'test_*.py' -v.
 
 Network/model boundaries are replaced; browser execution and image decoding are real.
 """
@@ -15,14 +15,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = "link_context_under_test"
 package = types.ModuleType(PACKAGE)
 package.__path__ = [str(ROOT)]
 sys.modules[PACKAGE] = package
-fetch = importlib.import_module(PACKAGE + ".fetch")
-media = importlib.import_module(PACKAGE + ".media")
-Store = importlib.import_module(PACKAGE + ".store").Store
+fetch = importlib.import_module(PACKAGE + ".core.fetch")
+media = importlib.import_module(PACKAGE + ".core.media")
+Store = importlib.import_module(PACKAGE + ".core.store").Store
 
 
 class Files(unittest.TestCase):

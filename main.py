@@ -10,9 +10,9 @@ from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, StarTools
 from astrbot.core.agent.message import TextPart
 
-from .fetch import Reader, Web, links_in
-from .media import Understanding, safe_failure
-from .store import Store
+from .core.fetch import Reader, Web, links_in
+from .core.media import Understanding, safe_failure
+from .core.store import Store
 
 
 CONTEXT_RULE = """
