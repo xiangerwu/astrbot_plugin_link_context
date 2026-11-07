@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.codebase-memory/
+*.sqlite3
+*.sqlite3-*
+*.mp4
+*.wav
+*.zip
+.env
+*cookie*.json
+*storageState*.json

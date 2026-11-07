@@ -1,0 +1,37 @@
+{
+  "vision_provider_id": {
+    "description": "圖片理解模型",
+    "type": "string",
+    "default": "",
+    "_special": "select_provider",
+    "hint": "選擇你已設定且支援圖片的 OpenAI 模型。留空沿用目前聊天模型；不另外建立提供商或切換模型。背景讀圖會產生該模型的 API 費用。"
+  },
+  "max_images": {
+    "description": "每個連結最多理解幾張圖片",
+    "type": "int",
+    "default": 8,
+    "slider": {"min": 1, "max": 30, "step": 1},
+    "hint": "超出數量會標記未讀。每張圖片呼叫一次圖片模型；影片不下載、不抽幀、不轉錄。"
+  },
+  "retention_hours": {
+    "description": "連結閱讀記錄保留時數",
+    "type": "int",
+    "default": 24,
+    "slider": {"min": 1, "max": 720, "step": 1},
+    "hint": "依 AstrBot 的會話來源隔離，預設保留 24 小時。聊天可讀最近 20 個連結，重啟後仍保留已完成記錄。"
+  },
+  "bilibili_cookie": {
+    "description": "Bilibili Cookie（選填）",
+    "type": "string",
+    "default": "",
+    "secret": true,
+    "hint": "只傳給 bilibili.com 及其子網域，不會傳給圖片 CDN。不要貼在群組。"
+  },
+  "threads_cookie": {
+    "description": "Threads Cookie（選填）",
+    "type": "string",
+    "default": "",
+    "secret": true,
+    "hint": "只傳給 threads.com／threads.net。登入或反自動化限制仍可能使貼文無法讀取。"
+  }
+}
