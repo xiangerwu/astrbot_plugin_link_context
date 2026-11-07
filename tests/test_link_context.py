@@ -426,8 +426,14 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
         modules["astrbot.api"].AstrBotConfig = dict
         modules["astrbot.api"].logger = logging.getLogger("link_context_tests")
 
+        handler_priorities = {}
+
         def decorator(*args, **kwargs):
-            return lambda function: function
+            def register(function):
+                handler_priorities[function.__name__] = kwargs.get("priority", 0)
+                return function
+
+            return register
 
         modules["astrbot.api.event"].filter = types.SimpleNamespace(
             event_message_type=decorator,
@@ -480,8 +486,29 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
                     get_self_id=lambda: "bot",
                     get_sender_name=lambda: "Alice",
                 )
-                # No send/yield/plain_result methods exist on this event: accidental forwarding fails.
-                self.assertIsNone(await plugin.observe(event))
+
+                async def builtin_group_chat(incoming):
+                    request = types.SimpleNamespace(
+                        system_prompt="persona", extra_user_content_parts=[]
+                    )
+                    await plugin.inject(incoming, request)
+                    self.assertTrue(
+                        request.extra_user_content_parts,
+                        "Group chat started before link reading was queued",
+                    )
+                    self.assertIn(
+                        '"state": "pending"', request.extra_user_content_parts[0].text
+                    )
+
+                # AstrBot 4.29.4 runs handlers sequentially, highest priority first;
+                # its built-in group-chat handler uses sys.maxsize - 2.
+                handlers = [
+                    (sys.maxsize - 2, builtin_group_chat),
+                    (handler_priorities["observe"], plugin.observe),
+                ]
+                # No send/yield/plain_result methods exist: accidental forwarding fails.
+                for _, handler in sorted(handlers, key=lambda item: -item[0]):
+                    self.assertIsNone(await handler(event))
                 self.assertFalse(event.is_at_or_wake_command)
                 self.assertFalse(event._has_send_oper)
                 await asyncio.wait_for(plugin.queue.join(), 3)

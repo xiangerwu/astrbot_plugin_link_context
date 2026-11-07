@@ -1,6 +1,6 @@
 # Discord 設定與資料管理
 
-[返回首頁](../README.md) · [English overview](../README.en.md)
+[返回首頁](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.md) · [English overview](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.en.md)
 
 沿用 AstrBot 的 Discord adapter 與官方 Bot 帳號，不需要另一個 Discord 客戶端或使用者 Token。
 

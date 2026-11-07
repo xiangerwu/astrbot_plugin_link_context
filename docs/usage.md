@@ -1,6 +1,6 @@
 # 使用方式與讀取限制
 
-[返回首頁](../README.md) · [English overview](../README.en.md)
+[返回首頁](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.md) · [English overview](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.en.md)
 
 ## 平台支援
 
@@ -14,7 +14,26 @@
 
 這不是「所有網址都能完整閱讀」的保證。失敗、處理中、截斷與未理解的圖片都會留在記錄裡，讓聊天模型知道哪些內容不能聲稱看過。
 
-## 閱讀流程與保存
+## 讀取開關與回覆機率
+
+「是否讀取連結」由 AstrBot 的插件啟用與會話插件設定控制；「是否自然接話」沿用 AstrBot 的群聊主動回覆機率。兩者獨立：沒有觸發聊天的連結仍會排入背景閱讀，讀取成功也不會自動發送回覆。
+
+在 AstrBot WebUI 選擇該 Discord Bot／會話使用的配置，搜尋「主動回覆」（介面可能顯示簡體「主动回复」）：
+
+| 設定 | 用途 |
+| --- | --- |
+| `provider_ltm_settings.active_reply.enable` | 啟用群聊自然接話；停用不會關閉本插件的背景讀取。 |
+| `provider_ltm_settings.active_reply.method` | 選擇 `possibility_reply`，沿用官方機率判定。 |
+| `provider_ltm_settings.active_reply.possibility_reply` | `0.0` 到 `1.0`，例如 `0.05` 為每次符合條件時約 5% 的機率。 |
+| `provider_ltm_settings.active_reply.whitelist` | 限制哪些會話可主動接話；不是連結閱讀白名單，也不同於全域存取控制白名單。 |
+
+5% 是每次獨立抽樣，不保證每 20 則剛好回 1 則，也不限於連結訊息。@ Bot／喚醒條件走正常聊天流程，不受這個隨機主動回覆機率控制。其他主動聊天插件另有自己的觸發設定；本插件不修改它們。
+
+依 [AstrBot 4.29.4 的實作](https://github.com/AstrBotDevs/AstrBot/blob/v4.29.4/astrbot/builtin_stars/astrbot/group_chat_context.py)，本插件不新增另一套機率、不設定喚醒旗標，也不為了避免回覆而停止訊息事件。全域存取控制白名單若先擋下頻道／討論串，插件就不會收到訊息，連結也不會讀取。
+
+從 0.1.1 起，讀取事件會先於內建群聊處理器排隊，讓當輪聊天至少能看到「正在讀取」。如果模型開始回覆時圖片仍未完成，當輪只提供實際已取得的狀態；完成後不補發，下一輪聊天才能取得完成的結果。
+
+## 分享與查詢
 
 1. 群組貼一個連結，插件排入背景工作，不發消息。
 2. 背景讀取完成後，在同一會話問「剛剛那篇在講什麼」或自然討論；由目前人格與聊天模型回答。

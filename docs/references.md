@@ -1,6 +1,6 @@
 # 開源參考與技術來源
 
-[返回首頁](../README.md) · [English overview](../README.en.md)
+[返回首頁](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.md) · [English overview](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.en.md)
 
 查閱日期：2026-11-07。本專案參考既有專案的讀取途徑、API 欄位與插件整合方式，獨立實作靜默流程，沒有把下列專案整包複製或當作執行依賴。以下分清「提供資料給聊天模型」與「直接輸出解析結果」；有解析能力不代表符合靜默需求。
 
@@ -29,4 +29,4 @@
 
 參考不代表來源保證穩定，也不代表本插件已通過各專案的測試。來源各自的授權仍以其 LICENSE 為準；若未來直接移植程式碼，需另行遵守對應授權，不能僅靠這份列表代替授權條件。
 
-圖片來源另見[美術來源與生成記錄](artwork.md)。
+圖片來源另見[美術來源與生成記錄](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/artwork.md)。

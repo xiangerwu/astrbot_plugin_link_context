@@ -1,8 +1,8 @@
 # 美術來源與生成記錄
 
-[返回首頁](../README.md) · [English overview](../README.en.md)
+[返回首頁](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.md) · [English overview](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.en.md)
 
-[介紹圖](../assets/intro.png)與[插件圖示](../logo.png) 於 2026-11-07 使用 Codex 內建 image_gen 工具製作，未使用 CLI／自行配置的 API 金鑰。圖示以已確認的介紹圖改製，採透明背景、1:1 半身構圖，供插件列表顯示；使用者提供的列表截圖只參考用途，不移植其中的 AstrNa 圖標。
+[介紹圖](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/assets/intro.png)與[插件圖示](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/logo.png) 於 2026-11-07 使用 Codex 內建 image_gen 工具製作，未使用 CLI／自行配置的 API 金鑰。圖示以已確認的介紹圖改製，採透明背景、1:1 半身構圖，供插件列表顯示；使用者提供的列表截圖只參考用途，不移植其中的 AstrNa 圖標。
 
 角色參考為 AstrBot v4.29.4 倉庫的 [404-seio.png](https://github.com/AstrBotDevs/AstrBot/blob/v4.29.4/docs/public/404-seio.png) 與 [loading-seio.webp](https://github.com/AstrBotDevs/AstrBot/blob/v4.29.4/dashboard/src/assets/images/loading-seio.webp)。保留青色長髮、金色光環及星飾、黃色毛衣等特徵，改為手持放大鏡。這是非官方 AI 衍生美術，不代表取得原角色／品牌的獨立授權或官方背書；本專案程式碼的 MIT 授權不重新授權原角色或品牌。公開宣傳前應依原權利人的使用條件確認用途。
 

@@ -1,6 +1,6 @@
 # 開發與驗證
 
-[返回首頁](../README.md) · [English overview](../README.en.md)
+[返回首頁](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.md) · [English overview](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.en.md)
 
 ## 專案結構
 
@@ -26,6 +26,8 @@ astrbot_plugin_link_context/
 │   └── intro.png           # README 介紹圖
 └── docs/
     ├── installation.md
+    ├── bilibili-cookie.md
+    ├── threads-cookie.md
     ├── usage.md
     ├── discord.md
     ├── troubleshooting.md
@@ -51,14 +53,14 @@ python -m unittest discover -s tests -p 'test_*.py' -v
 
 | 範圍 | 已檢查行為 |
 | --- | --- |
-| 插件流程 | 貼連結不發消息、不喚醒；背景結果與暫時上下文；既有人格保留；純文字不額外呼叫模型 |
+| 插件流程 | 貼連結不發消息、不喚醒；依 AstrBot 的降序事件契約，在內建群聊前排隊且注入 pending 狀態；背景結果與暫時上下文；既有人格保留；純文字不額外呼叫模型 |
 | 會話與保存 | Discord 頻道／討論串／平台實例隔離、SQLite 持久化、重載中斷、保留期限與內容截斷 |
 | 平台解析 | PTT 主文及圖片連結、X ID／配圖、Bilibili 影片資訊及動態、Threads 核對目標貼文與預覽缺漏 |
 | 圖片與影片 | 真實圖片解碼與縮放；影片不下載、不理解，記錄明確標示 |
 | 網路邊界 | 私有位址及 DNS／重新導向檢查、無 Content-Length 時的串流大小上限、Cookie 網域與 HTTPS 降級隔離 |
 | 故障與工具 | 暫存建立／清理／SQLite 寫入失敗後後續工作仍能處理；觀察與注入時 SQLite 錯誤不外拋；分頁接受 `12000`／`12000.0`，拒絕負數、非整數等輸入 |
 
-請先依[安裝說明](installation.md)安裝依賴與 Chromium，並在專案根目錄執行測試。若使用自行安裝的 Chromium，可透過環境變數 `LINK_CONTEXT_TEST_BROWSER` 指定執行檔；其餘情況使用 Playwright 的 Chromium。
+請先依[安裝說明](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/installation.md)安裝依賴與 Chromium，並在專案根目錄執行測試。若使用自行安裝的 Chromium，可透過環境變數 `LINK_CONTEXT_TEST_BROWSER` 指定執行檔；其餘情況使用 Playwright 的 Chromium。
 
 此外，以官方 v4.29.4 的原始函式進行獨立檢查：元資料校驗及版本範圍通過；Discord adapter 的訊息轉換在隔離物件測試中保留頻道／討論串 ID 與網址。這些檢查沒有登入 Discord，也不是完整 AstrBot 啟動測試。
 
@@ -73,9 +75,9 @@ ruff check .
 
 ## 部署後人工驗收
 
-尚未在你的 Linux AstrBot 實機載入，也未使用你的 OpenAI 額度測試圖片效果。部署後請依序驗收：
+0.1.1 的事件排序修正已在本機回歸測試通過；更新到 Linux AstrBot 後仍需驗收。部署後請依序驗收：
 
-1. 在已啟用插件的頻道貼一則公開文字連結，不 @ Bot，確認插件不回覆、不加表情。
+1. 在已啟用插件的頻道貼一則公開文字連結，不 @ Bot，確認插件不發送解析結果、不加表情；AstrBot 既有主動回覆仍可按機率正常接話，見[讀取與回覆設定](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/usage.md#%E8%AE%80%E5%8F%96%E9%96%8B%E9%97%9C%E8%88%87%E5%9B%9E%E8%A6%86%E6%A9%9F%E7%8E%87)。
 2. 等背景完成後，在同一會話 @ Bot 詢問內容；確認回答依記錄而非憑網址猜測。
 3. 在另一頻道／討論串詢問同一內容，確認沒有跨會話取得記錄。
 4. 貼一則有圖片的連結，確認所選 OpenAI 圖片模型能描述；這一步會產生模型費用。

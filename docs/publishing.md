@@ -1,6 +1,6 @@
 # 插件市場發布
 
-[返回首頁](../README.md) · [English overview](../README.en.md)
+[返回首頁](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.md) · [English overview](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.en.md)
 
 倉庫網址填在 `metadata.yaml`；根目錄的 `logo.png` 是透明背景、1:1 圖示，`assets/intro.png` 用於 README 介紹。這些檔案須隨原始碼一同推送，市場才能取得。建立 GitHub 空倉庫本身不會上架。
 
@@ -8,11 +8,11 @@
 
 根目錄需保留 `main.py`、`metadata.yaml`、`_conf_schema.json`、`requirements.txt`、`logo.png`、`LICENSE` 及中英文 README；保留 `core/`、`tests/`、`assets/`、`docs/` 的相對位置。不要將所有檔案攤平成一層，否則 Python 匯入、README 圖片與文件連結都會失效。
 
-本機 ZIP 放在 `dist/`，不提交產物。完成[驗證](development.md)並提交預計發布的變更後，可在專案根目錄使用 Git 打包已提交版本：
+本機 ZIP 放在 `dist/`，不提交產物。完成[驗證](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/development.md)並提交預計發布的變更後，可在專案根目錄使用 Git 打包已提交版本：
 
 ```bash
 mkdir -p dist
-git archive --format=zip --output=dist/astrbot_plugin_link_context-0.1.0.zip HEAD
+git archive --format=zip --output=dist/astrbot_plugin_link_context-0.1.1.zip HEAD
 ```
 
 以上是 Linux shell 命令。`git archive HEAD` 只包含已提交且被追蹤的檔案，不包含工作目錄未提交的變更；打包前先確認 `git status --short` 與版本號。`dist/` ZIP、虛擬環境及執行資料應維持不受 Git 追蹤。

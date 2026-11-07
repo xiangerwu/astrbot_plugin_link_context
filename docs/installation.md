@@ -1,6 +1,6 @@
 # 安裝與配置
 
-[返回首頁](../README.md) · [English overview](../README.en.md)
+[返回首頁](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.md) · [English overview](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.en.md)
 
 以 AstrBot **4.29.4** 的 API 為開發依據，該版要求 Python **3.12 以上**。將此資料夾放到 AstrBot 的 `data/plugins/astrbot_plugin_link_context`，在 **執行 AstrBot 的同一 Python 環境、同一帳號**執行：
 
@@ -21,10 +21,17 @@ python -m playwright install chromium
 
 儲存後重載此插件。若是手動放入資料夾而 WebUI 無法發現新插件，再按你的既有部署方式重啟 AstrBot；不需要重新啟動整台 Linux。
 
+## Cookie 操作教學
+
+- [Bilibili Cookie 取得與設定](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/bilibili-cookie.md)：對應 `bilibili_cookie`，包含 Network 操作、正確格式、412 與更新方式。
+- [Threads Cookie 取得與設定](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/threads-cookie.md)：對應 `threads_cookie`，包含 Chromium 需求、公開預覽限制與驗收。
+
+兩個欄位都只接受單行的原始 Cookie 值，不是 `Cookie:` 標頭整行、JSON、檔案路徑或環境變數名稱。Cookie 是選填；更新後的測試還要注意已完成記錄的去重，不會因重載而自動重讀。
+
 ## 更新已有安裝
 
 使用 AstrBot 的插件更新功能，或更新整份專案，並保留 `core/`、`tests/`、`assets/`、`docs/` 的目錄結構；不要只複製新的 `main.py`，它需要 `core/` 內的模組。ZIP 應解壓到插件根目錄，使 `main.py` 與 `metadata.yaml` 在同一層。
 
-執行記錄位於 AstrBot 的 `data/plugin_data/astrbot_plugin_link_context/`，不在原始碼資料夾內。此次結構整理不改變資料庫位置或結構，不需要資料遷移。更新完成後重載插件；若環境依賴有變更，先使用相同 Python 環境更新依賴。接著依[人工驗收步驟](development.md#部署後人工驗收)確認。
+執行記錄位於 AstrBot 的 `data/plugin_data/astrbot_plugin_link_context/`，不在原始碼資料夾內。此次結構整理不改變資料庫位置或結構，不需要資料遷移。更新完成後重載插件；若環境依賴有變更，先使用相同 Python 環境更新依賴。接著依[人工驗收步驟](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/development.md#%E9%83%A8%E7%BD%B2%E5%BE%8C%E4%BA%BA%E5%B7%A5%E9%A9%97%E6%94%B6)確認。
 
-Discord 的 intents、頻道權限與隱私告知另見 [Discord 設定與資料管理](discord.md)；讀取不到內容時見[排錯說明](troubleshooting.md)。
+Discord 的 intents、頻道權限與隱私告知另見 [Discord 設定與資料管理](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/discord.md)；讀取不到內容時見[排錯說明](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/troubleshooting.md)。

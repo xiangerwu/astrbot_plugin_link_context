@@ -3,6 +3,7 @@ import json
 import sqlite3
 import tempfile
 from pathlib import Path
+from sys import maxsize
 
 from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, filter
@@ -54,7 +55,8 @@ class LinkContextPlugin(Star):
         # ponytail: one bounded worker; add parallel workers only if measured backlog requires it.
         self.worker = asyncio.create_task(self.consume(), name="link-context-reader")
 
-    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE, priority=20)
+    # Queue before AstrBot's group-chat handler (maxsize - 2) can request a reply.
+    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE, priority=maxsize)
     async def observe(self, event: AstrMessageEvent):
         if str(event.get_sender_id()) == str(event.get_self_id()):
             return

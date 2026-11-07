@@ -1,6 +1,8 @@
 # 常見問題與排錯
 
-[返回首頁](../README.md) · [English overview](../README.en.md)
+[返回首頁](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.md) · [English overview](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.en.md)
+
+Cookie 的取得、填寫與更新請分別參考 [Bilibili 教學](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/bilibili-cookie.md)與 [Threads 教學](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/threads-cookie.md)。
 
 | 現象 | 檢查方式 |
 | --- | --- |

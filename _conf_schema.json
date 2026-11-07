@@ -25,13 +25,13 @@
     "type": "string",
     "default": "",
     "secret": true,
-    "hint": "只傳給 bilibili.com 及其子網域的 HTTPS 網址，不會傳給圖片 CDN 或 HTTP。不要貼在群組；配置遮罩不代表儲存加密。"
+    "hint": "貼上單行 Cookie 值，不含 Cookie:、JSON 或檔案路徑。取得方式見 README 的 Bilibili Cookie 教學。只傳給 bilibili.com 及其子網域的 HTTPS 網址，不傳給圖片 CDN；遮罩不代表儲存加密。"
   },
   "threads_cookie": {
     "description": "Threads Cookie（選填）",
     "type": "string",
     "default": "",
     "secret": true,
-    "hint": "只傳給 threads.com／threads.net 及其子網域的 HTTPS 網址。登入或反自動化限制仍可能使貼文無法讀取；配置遮罩不代表儲存加密。"
+    "hint": "貼上單行 Cookie 值，不含 Cookie:、JSON 或 storage_state。取得方式見 README 的 Threads Cookie 教學。只傳給 threads.com／threads.net 及其子網域的 HTTPS 網址；不保證完整讀取，遮罩不代表儲存加密。"
   }
 }
