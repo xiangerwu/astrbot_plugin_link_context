@@ -4,6 +4,10 @@
 
 倉庫網址填在 `metadata.yaml`；根目錄的 `logo.png` 是透明背景、1:1 圖示，`assets/intro.png` 用於 README 介紹。這些檔案須隨原始碼一同推送，市場才能取得。建立 GitHub 空倉庫本身不會上架。
 
+`metadata.yaml` 已宣告 `support_platforms: [discord]`，目前只列入已實測的平台；PTT、Threads、X、Bilibili 是內容來源，不是聊天平台。`tags` 為「連結解析、靜默閱讀、上下文增強、圖片理解、GIF、Discord」，供官方發布平台解析並用於市場分類與搜尋。
+
+AstrBot 4.29.4 的本機插件載入器會讀取 `support_platforms`，但不會將 YAML 的 `tags` 載入本機插件詳情；詳情頁可以從市場資料取得標籤。因此上傳 ZIP／重載可更新支持平台，標籤仍需在發布平台提交或更新市場資料後確認，不能只靠本機重載。欄位格式見[官方發布說明](https://docs.astrbot.app/dev/star/plugin-publish.html)。
+
 ## 發布包路徑
 
 根目錄需保留 `main.py`、`metadata.yaml`、`_conf_schema.json`、`requirements.txt`、`logo.png`、`LICENSE` 及中英文 README；保留 `core/`、`tests/`、`assets/`、`docs/` 的相對位置。不要將所有檔案攤平成一層，否則 Python 匯入、README 圖片與文件連結都會失效。

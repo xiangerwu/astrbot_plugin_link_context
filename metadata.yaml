@@ -5,3 +5,12 @@ version: 0.1.4
 author: xiangerwu
 repo: https://github.com/xiangerwu/astrbot_plugin_link_context
 astrbot_version: '>=4.29.4'
+support_platforms:
+  - discord
+tags:
+  - 連結解析
+  - 靜默閱讀
+  - 上下文增強
+  - 圖片理解
+  - GIF
+  - Discord
