@@ -119,6 +119,55 @@ class ParsingTests(Files):
 
 
 class AsyncTests(unittest.IsolatedAsyncioTestCase):
+    async def test_direct_gif_link_and_ordered_frames(self):
+        from PIL import Image
+
+        url = "https://media.discordapp.net/attachments/1/2/motion.GIF?ex=123&is=456&hm=TEST_ONLY&="
+        work = Path(tempfile.mkdtemp(prefix="check-", dir=ROOT))
+        try:
+            fixture = work / "fixture.gif"
+            frames = [Image.new("RGB", (24, 24), (n * 30, 0, 0)) for n in range(7)]
+            frames[0].save(
+                fixture, save_all=True, append_images=frames[1:], duration=100, loop=0
+            )
+            calls = []
+
+            class FixtureWeb:
+                async def read(self, source, *, destination=None, limit=None):
+                    calls.append((source, destination))
+                    if destination:
+                        destination.write_bytes(fixture.read_bytes())
+                    return source, "image/gif", fixture.read_bytes()
+
+            async def vision(**kwargs):
+                self.assertEqual(len(kwargs["image_urls"]), 4)
+                colors = []
+                for path in kwargs["image_urls"]:
+                    with Image.open(path) as frame:
+                        colors.append(frame.convert("RGB").getpixel((0, 0))[0])
+                for actual, expected in zip(colors, [0, 60, 120, 180], strict=True):
+                    self.assertAlmostEqual(actual, expected, delta=3)
+                self.assertIn("依序", kwargs["prompt"])
+                return types.SimpleNamespace(completion_text="畫面逐漸變紅")
+
+            context = types.SimpleNamespace(llm_generate=AsyncMock(side_effect=vision))
+            web = FixtureWeb()
+            page = await fetch.Reader(web).read(fetch.links_in(f"<{url}>")[0])
+            self.assertEqual(page.images, [url])
+            content = await media.Understanding(
+                context, web, {"vision_provider_id": "existing-openai"}
+            ).describe(page, "group", work)
+            self.assertIn("畫面逐漸變紅", content)
+            self.assertIn("4 幀", content)
+            self.assertNotIn("僅第一幀", content)
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][0], url)
+            context.llm_generate.assert_awaited_once()
+        finally:
+            for path in work.iterdir():
+                path.unlink()
+            work.rmdir()
+
     async def test_http_downgrade_redirect_drops_login_cookie(self):
         web = fetch.Web({"threads.com": "session=TEST_ONLY"})
         real_session = web.session

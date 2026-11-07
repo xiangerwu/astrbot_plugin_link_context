@@ -8,6 +8,7 @@
 
 - 支援 PTT、Twitter / X、Threads、Bilibili 與一般 HTML 網頁，實際讀取範圍依來源而異。
 - 正文直接存成近期記錄；圖片透過 AstrBot 已配置的 OpenAI 圖片模型理解，每張圖會產生模型費用。
+- 支援 JPG／PNG／WebP／GIF 直接網址（含 Discord 圖片連結）；GIF 最多抽取 4 幀，合併一次讀圖請求，可能漏掉短暫動作且會增加圖片用量。
 - **不處理影片畫面、語音或字幕**；標題、簡介與封面不代表看過影片。
 - 記錄依會話隔離，預設保留 24 小時；重啟後已完成記錄仍保留。
 - 讀取由插件／會話啟用設定控制；自然接話沿用 AstrBot 的主動回覆機率，不必每條連結都回覆。[設定方式](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/usage.md#%E8%AE%80%E5%8F%96%E9%96%8B%E9%97%9C%E8%88%87%E5%9B%9E%E8%A6%86%E6%A9%9F%E7%8E%87)

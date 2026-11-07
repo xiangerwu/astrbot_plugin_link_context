@@ -8,16 +8,23 @@ from PIL import Image, UnidentifiedImageError
 from .fetch import Page, ReadError, Web
 
 
-def prepare_image(path: Path) -> Path:
+def prepare_image(path: Path) -> list[Path]:
     try:
         with Image.open(path) as image:
             if image.width * image.height > 40_000_000:
                 raise ReadError("圖片尺寸超過安全上限")
-            image.seek(0)
-            image.thumbnail((1280, 1280))
-            target = path.with_suffix(".jpg")
-            image.convert("RGB").save(target, quality=85)
-        return target
+            count = image.n_frames if image.format == "GIF" else 1
+            indices = sorted({i * (count - 1) // 3 for i in range(4)})
+            targets = []
+            for index in indices:
+                image.seek(index)
+                # Resize a copy so seeking later GIF frames retains the original canvas.
+                frame = image.convert("RGB")
+                frame.thumbnail((1280, 1280))
+                target = path.with_name(f"{path.stem}-frame-{index}.jpg")
+                frame.save(target, quality=85)
+                targets.append(target)
+        return targets
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise ReadError("圖片格式無法讀取") from None
 
@@ -64,14 +71,20 @@ class Understanding:
             try:
                 path = work / f"image-{index}.bin"
                 await self.web.read(url, destination=path, limit=12 * 1024 * 1024)
-                image = await asyncio.to_thread(prepare_image, path)
+                images = await asyncio.to_thread(prepare_image, path)
+                scope = (
+                    f"GIF 依序抽取 {len(images)} 幀，可能漏掉未抽取的動作，不代表完整觀看"
+                    if len(images) > 1
+                    else "靜態圖片／動圖第一幀"
+                )
                 description = await self.vision(
                     umo,
-                    [image],
-                    f"這是連結的配圖或封面 {index + 1}。只描述圖片，不依標題猜測。",
+                    images,
+                    f"這是連結的圖片或封面 {index + 1}（{scope}）。"
+                    "只描述可見內容與前後變化，不依標題猜測，不從抽幀推測動作速度。",
                 )
                 pieces.append(
-                    f"圖片 {index + 1} 的模型觀察（可能有誤，動圖僅第一幀）：\n{description}"
+                    f"圖片 {index + 1} 的模型觀察（可能有誤；{scope}）：\n{description}"
                 )
             except Exception as exc:
                 notes.append(f"圖片 {index + 1} 未理解：{safe_failure(exc)}")

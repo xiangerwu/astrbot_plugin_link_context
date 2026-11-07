@@ -164,6 +164,9 @@ class Reader:
 
     async def read(self, url: str) -> Page:
         url = checked_url(url)
+        if re.search(r"\.(?:jpe?g|png|gif|webp)$", urlsplit(url).path, re.I):
+            # Keep signed queries intact; describe() downloads and validates the image.
+            return Page(url, title="圖片連結", images=[url])
         if host_is(url, "b23.tv") or host_is(url, "bili2233.cn"):
             url, _, _ = await self.web.read(url)
         if host_is(url, "x.com") or host_is(url, "twitter.com"):

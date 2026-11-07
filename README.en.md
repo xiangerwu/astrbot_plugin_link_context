@@ -10,6 +10,7 @@ An AstrBot plugin that quietly reads links shared in group messages and makes th
 
 | Source | Available content | Limitations |
 | --- | --- | --- |
+| Direct JPG / PNG / WebP / GIF URLs | Images, including signed Discord media links; up to four GIF frames in order | GIF sampling can miss brief actions. Expired links cannot be downloaded. |
 | PTT | Article text, comments, author, embedded and linked images | Deleted posts and inaccessible image hosts can fail. |
 | Twitter / X | Public post text, quoted text, and post images through FxEmbed | Post IDs are sent to a third-party service. Private or login-only posts are unsupported. |
 | Threads | Structured post data matched to the requested shortcode using Chromium | May fall back to a verified public preview without images; missing content is marked. |
@@ -19,6 +20,8 @@ An AstrBot plugin that quietly reads links shared in group messages and makes th
 **Video frames, audio and subtitles are not processed.** A title, description or cover image does not mean the bot has watched the video.
 
 Text is stored directly without an extra summarization call. Images use the vision provider configured in AstrBot, intended here for OpenAI. Each processed image requires a paid model call. There is no MiniMax dependency or separate OpenAI SDK configuration.
+
+Each GIF sends up to four sampled frames together in one model call, increasing image input usage. Frames are evenly spaced by frame index, including the first and last; this is not full animation playback and does not establish movement speed. Other animated image formats currently use only their first frame.
 
 ## Quick start
 
