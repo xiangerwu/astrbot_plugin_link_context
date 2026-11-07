@@ -34,6 +34,8 @@
 3. 在插件配置選擇圖片模型；Discord 啟用 Message Content Intent，並依[Discord 設定](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/discord.md)核對 AstrBot adapter 請求的其他 intents 與頻道權限。
 4. 重載插件，在群組貼出連結。背景完成後，在同一會話喚醒 Bot 詢問或接著討論；插件不會發送完成通知。
 
+同一則訊息直接 @ Bot 並附上完整連結時，會在本輪回答前最多等待 15 秒取得讀取結果。一般貼連結不等待；超時後背景工作繼續，但不自動補發回覆。
+
 要重讀舊 GIF 或重試已完成的連結，在原頻道輸入 `/link_reread 完整網址`。指令回覆一次排隊狀態，之後靜默重讀；圖片會再次產生模型費用。詳見[手動重新讀取](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/usage.md#%E6%89%8B%E5%8B%95%E9%87%8D%E6%96%B0%E8%AE%80%E5%8F%96)。
 
 Linux 系統依賴、Docker、Cookie 與各項配置見[安裝與配置](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/installation.md)。部署前請告知成員連結與圖片的處理方式，詳見[資料使用與管理](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/discord.md#%E8%B3%87%E6%96%99%E4%BD%BF%E7%94%A8%E8%88%87%E7%AE%A1%E7%90%86)。

@@ -481,6 +481,7 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
             "astrbot",
             "astrbot.api",
             "astrbot.api.event",
+            "astrbot.api.message_components",
             "astrbot.api.provider",
             "astrbot.api.star",
             "astrbot.core",
@@ -509,6 +510,12 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
         )
         modules["astrbot.api.event"].AstrMessageEvent = object
         modules["astrbot.api.provider"].ProviderRequest = object
+
+        class At:
+            def __init__(self, qq):
+                self.qq = qq
+
+        modules["astrbot.api.message_components"].At = At
 
         class Star:
             def __init__(self, context):
@@ -551,6 +558,7 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
                     get_sender_id=lambda: "user",
                     get_self_id=lambda: "bot",
                     get_sender_name=lambda: "Alice",
+                    get_messages=lambda: [],
                 )
 
                 async def builtin_group_chat(incoming):
@@ -586,6 +594,74 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
                 await plugin.inject(event, req)
                 self.assertIn("正文", req.extra_user_content_parts[0].text)
                 self.assertTrue(req.extra_user_content_parts[0].temporary)
+
+                # Only an explicit mention of this bot waits for this message's URLs.
+                mention = types.SimpleNamespace(**vars(event))
+                mention.message_str = "https://example.com/mentioned"
+                mention.get_messages = lambda: [At("bot")]
+                started, release = asyncio.Event(), asyncio.Event()
+
+                async def delayed_read(url):
+                    started.set()
+                    await release.wait()
+                    return fetch.Page(url, text="等到的新內容")
+
+                with patch.object(plugin.reader, "read", side_effect=delayed_read):
+                    await plugin.observe(mention)
+                    await asyncio.wait_for(started.wait(), 3)
+                    other_mention = types.SimpleNamespace(**vars(mention))
+                    other_mention.get_messages = lambda: [At("another-user")]
+                    immediate_req = types.SimpleNamespace(
+                        system_prompt="", extra_user_content_parts=[]
+                    )
+                    await asyncio.wait_for(
+                        plugin.inject(other_mention, immediate_req), 1
+                    )
+                    self.assertIn(
+                        '"state": "pending"',
+                        immediate_req.extra_user_content_parts[0].text,
+                    )
+                    waited_req = types.SimpleNamespace(
+                        system_prompt="persona", extra_user_content_parts=[]
+                    )
+                    waiting = asyncio.create_task(plugin.inject(mention, waited_req))
+                    await asyncio.sleep(0.02)
+                    self.assertFalse(
+                        waiting.done(),
+                        "Mentioned link returned before reading finished",
+                    )
+                    release.set()
+                    await asyncio.wait_for(waiting, 3)
+                    self.assertIn(
+                        "等到的新內容", waited_req.extra_user_content_parts[0].text
+                    )
+                    await asyncio.wait_for(plugin.queue.join(), 3)
+
+                # Timeout stops waiting, but leaves the background job running.
+                started.clear()
+                release.clear()
+                mention.message_str = "https://example.com/slow"
+                with patch.object(plugin.reader, "read", side_effect=delayed_read):
+                    await plugin.observe(mention)
+                    await asyncio.wait_for(started.wait(), 3)
+                    timeout_req = types.SimpleNamespace(
+                        system_prompt="", extra_user_content_parts=[]
+                    )
+                    with patch.object(main, "LINK_WAIT_SECONDS", 0.03):
+                        await asyncio.wait_for(plugin.inject(mention, timeout_req), 1)
+                    self.assertIn(
+                        '"state": "pending"',
+                        timeout_req.extra_user_content_parts[0].text,
+                    )
+                    self.assertFalse(plugin.worker.done())
+                    release.set()
+                    await asyncio.wait_for(plugin.queue.join(), 3)
+                    self.assertEqual(
+                        plugin.store.state(
+                            mention.unified_msg_origin, mention.message_str
+                        ),
+                        "ready",
+                    )
 
                 # Dispatch the real command before observe()/chat, as AstrBot does.
                 command_event = types.SimpleNamespace(
