@@ -14,7 +14,7 @@ def prepare_image(path: Path) -> list[Path]:
             if image.width * image.height > 40_000_000:
                 raise ReadError("圖片尺寸超過安全上限")
             count = image.n_frames if image.format == "GIF" else 1
-            indices = sorted({i * (count - 1) // 3 for i in range(4)})
+            indices = sorted({i * (count - 1) // 7 for i in range(8)})
             targets = []
             for index in indices:
                 image.seek(index)

@@ -10,7 +10,7 @@ An AstrBot plugin that quietly reads links shared in group messages and makes th
 
 | Source | Available content | Limitations |
 | --- | --- | --- |
-| Direct JPG / PNG / WebP / GIF URLs | Images, including signed Discord media links; up to four GIF frames in order | GIF sampling can miss brief actions. Expired links cannot be downloaded. |
+| Direct JPG / PNG / WebP / GIF URLs | Images, including signed Discord media links; up to eight GIF frames in order | GIF sampling can miss brief actions. Expired links cannot be downloaded. |
 | PTT | Article text, comments, author, embedded and linked images | Deleted posts and inaccessible image hosts can fail. |
 | Twitter / X | Public post text, quoted text, and post images through FxEmbed | Post IDs are sent to a third-party service. Private or login-only posts are unsupported. |
 | Threads | Structured post data matched to the requested shortcode using Chromium | May fall back to a verified public preview without images; missing content is marked. |
@@ -21,7 +21,7 @@ An AstrBot plugin that quietly reads links shared in group messages and makes th
 
 Text is stored directly without an extra summarization call. Images use the vision provider configured in AstrBot, intended here for OpenAI. Each processed image requires a paid model call. There is no MiniMax dependency or separate OpenAI SDK configuration.
 
-Each GIF sends up to four sampled frames together in one model call, increasing image input usage. Frames are evenly spaced by frame index, including the first and last; this is not full animation playback and does not establish movement speed. Other animated image formats currently use only their first frame.
+Each GIF sends up to eight sampled frames together in one model call, increasing image input usage. Frames are evenly spaced by frame index, including the first and last; this is not full animation playback and does not establish movement speed. Other animated image formats currently use only their first frame.
 
 ## Quick start
 
@@ -96,7 +96,7 @@ ruff format --check .
 ruff check .
 ```
 
-Set `LINK_CONTEXT_TEST_BROWSER` to an existing Chromium executable if needed. Ruff 0.15.22 was used for validation. The 20 tests cover silent processing, event ordering, session isolation, parsing, network boundaries, images, database failures and pagination. Tests replace AstrBot/model/network boundaries; browser execution and image decoding are real. Deployment acceptance for the 0.1.1 fix on Linux with Discord/OpenAI remains outstanding.
+Set `LINK_CONTEXT_TEST_BROWSER` to an existing Chromium executable if needed. Ruff 0.15.22 was used for validation. The 22 tests cover silent processing, event ordering, session isolation, parsing, network boundaries, eight-frame GIF sampling, short GIFs without duplicate frames, images, database failures and pagination. Tests replace AstrBot/model/network boundaries; browser execution and image decoding are real. Automated tests do not replace deployment acceptance on Linux with Discord and the configured provider.
 
 `main.py`, metadata, configuration schema, requirements and `logo.png` remain at the root for AstrBot. Internal modules are in `core/`, tests in `tests/`, detailed guides in `docs/`, and the introduction image in `assets/`. Runtime database paths are unchanged by this layout.
 

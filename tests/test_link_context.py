@@ -37,6 +37,20 @@ class Files(unittest.TestCase):
 
 
 class ParsingTests(Files):
+    def test_short_gif_does_not_duplicate_frames(self):
+        from PIL import Image
+
+        path = self.work / "short.gif"
+        Image.new("RGB", (16, 16), "red").save(
+            path,
+            save_all=True,
+            append_images=[Image.new("RGB", (16, 16), "blue")],
+            duration=100,
+        )
+        frames = media.prepare_image(path)
+        self.assertEqual(len(frames), 2)
+        self.assertEqual(len(set(frames)), 2)
+
     def test_discord_link_markup(self):
         self.assertEqual(
             fetch.links_in(
@@ -126,7 +140,7 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
         work = Path(tempfile.mkdtemp(prefix="check-", dir=ROOT))
         try:
             fixture = work / "fixture.gif"
-            frames = [Image.new("RGB", (24, 24), (n * 30, 0, 0)) for n in range(7)]
+            frames = [Image.new("RGB", (24, 24), (n * 15, 0, 0)) for n in range(15)]
             frames[0].save(
                 fixture, save_all=True, append_images=frames[1:], duration=100, loop=0
             )
@@ -140,12 +154,14 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
                     return source, "image/gif", fixture.read_bytes()
 
             async def vision(**kwargs):
-                self.assertEqual(len(kwargs["image_urls"]), 4)
+                self.assertEqual(len(kwargs["image_urls"]), 8)
                 colors = []
                 for path in kwargs["image_urls"]:
                     with Image.open(path) as frame:
                         colors.append(frame.convert("RGB").getpixel((0, 0))[0])
-                for actual, expected in zip(colors, [0, 60, 120, 180], strict=True):
+                for actual, expected in zip(
+                    colors, [0, 30, 60, 90, 120, 150, 180, 210], strict=True
+                ):
                     self.assertAlmostEqual(actual, expected, delta=3)
                 self.assertIn("依序", kwargs["prompt"])
                 return types.SimpleNamespace(completion_text="畫面逐漸變紅")
@@ -158,7 +174,7 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
                 context, web, {"vision_provider_id": "existing-openai"}
             ).describe(page, "group", work)
             self.assertIn("畫面逐漸變紅", content)
-            self.assertIn("4 幀", content)
+            self.assertIn("8 幀", content)
             self.assertNotIn("僅第一幀", content)
             self.assertEqual(len(calls), 1)
             self.assertEqual(calls[0][0], url)
