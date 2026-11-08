@@ -12,9 +12,9 @@ An AstrBot plugin that quietly reads links shared in group messages and makes th
 | --- | --- | --- |
 | Direct JPG / PNG / WebP / GIF URLs | Images, including signed Discord media links; up to eight GIF frames in order | GIF sampling can miss brief actions. Expired links cannot be downloaded. |
 | PTT | Article text, comments, author, embedded and linked images | Deleted posts and inaccessible image hosts can fail. |
-| Twitter / X | Public post text, quoted text, and post images through FxEmbed | Post IDs are sent to a third-party service. Private or login-only posts are unsupported. |
-| Threads | Structured post data matched to the requested shortcode using Chromium | May fall back to a verified public preview without images; missing content is marked. |
-| Bilibili | Video title, description and cover; dynamic / Opus text and images; short links | Anti-bot checks may return HTTP 412. Cookies do not guarantee access. |
+| Twitter / X | FxEmbed with VXTwitter API fallback; post ID verification | Third parties receive the post ID. Public content only. |
+| Threads | Resolve share redirects, then read matching static JSON or verified metadata before starting Chromium | Static JSON preserves post photos; metadata-only previews exclude possible avatars and may be truncated. |
+| Bilibili | Official video / dynamic APIs with vxbilibili preview fallback; resolvable short links | Metadata and cover only for videos. Previews may be truncated; cookies do not guarantee access. |
 | Other websites | HTML article / main / body text and images | Dynamic pages, authenticated content and paywalls are not guaranteed. PDFs and file downloads are unsupported. |
 
 **Video frames, audio and subtitles are not processed.** A title, description or cover image does not mean the bot has watched the video.
@@ -22,6 +22,14 @@ An AstrBot plugin that quietly reads links shared in group messages and makes th
 Text is stored directly without an extra summarization call. Images use the vision provider configured in AstrBot, intended here for OpenAI. Each processed image requires a paid model call. There is no MiniMax dependency or separate OpenAI SDK configuration.
 
 Each GIF sends up to eight sampled frames together in one model call, increasing image input usage. Frames are evenly spaced by frame index, including the first and last; this is not full animation playback and does not establish movement speed. Other animated image formats currently use only their first frame.
+
+## Additional sources in 0.2.0
+
+Instagram (oginstagram/vxinstagram), Facebook (facebed), TikTok (tnktok/tiktokez), Bluesky (official API/bskx), Misskey.io, Bahamut, Plurk, Pixiv (official API/phixiv), Steam Workshop, PChome 24h, E-Hentai/ExHentai and nhentai have dedicated readers. Bilibili falls back to vxbilibili previews when the official API fails. Generic pages can use metadata when their HTML body is empty.
+
+These readers follow the public API and preview approaches reviewed in [ermiana](https://github.com/canaria3406/ermiana/tree/3a64cab7937c71b5c243cd3c990d60d05e46f336). They do not require that bot, read its Discord messages, or forward previews. Public availability is required: no new login mechanisms are included. Bahamut age/phone verification and other login gates can prevent reading. Misskey is limited to misskey.io; Steam support means Workshop items. Pixiv reads the first preview, E-Hentai/ExHentai only gallery metadata and cover, and nhentai metadata and the first page, never entire books. Video previews are not video understanding. See the [source-by-source limits](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/usage.md#平台支援).
+
+Fast Threads HTTP reading has a 5-second budget; the existing browser fallback can take longer. X/Bilibili primary and fallback requests have 5-second budgets. Additional readers have a 12-second total budget, excluding subsequent image model calls. Existing 15-second mention waiting and silent completion behavior are unchanged.
 
 ## Quick start
 
@@ -68,7 +76,7 @@ Since 0.1.4, send `/link_reread FULL_URL` in the original group/channel/thread t
 The command sends one status acknowledgment, then silently reads the link again using up to eight GIF frames. Images incur another model call. It only accesses records in the current session, even beyond the latest 20 entries. Pending jobs are not duplicated, and a full queue leaves the old record intact. Once queued, the old content is replaced by a pending state and then the new result or failure; completion does not send a message. Expired source URLs still need a fresh valid link.
 - Data lives in AstrBot's `data/plugin_data/astrbot_plugin_link_context/links.sqlite3`, outside the plugin source. Completed records survive reloads. Image work files are removed after processing; cleanup failures are logged.
 - Only new group-message text is observed. Private messages, historical messages, edits/deletions, Discord embeds, URLs inside images and bare Bilibili BV identifiers are not processed. Spoiler markup and angle brackets do not opt a URL out of reading.
-- Inform server administrators and members before enabling link reading. Stored data includes URLs, sender display names, session identifiers, timestamps and extracted content. Websites receive requests, FxEmbed receives X post IDs, and configured model providers receive relevant text or images. The plugin does not train models; verify your provider's data policy separately.
+- Inform server administrators and members before enabling link reading. Stored data includes URLs, sender display names, session identifiers, timestamps and extracted content. Websites receive requests, FxEmbed/VXTwitter and other preview services receive the corresponding post IDs or URLs, and configured model providers receive relevant text or images. The plugin does not train models; verify your provider's data policy separately.
 - Disable the plugin for a session or revoke channel access to stop reading there. Deleting a Discord message does not delete the stored record. Operators should provide a private contact and deletion process, covering the plugin database, AstrBot conversation history and backups. See [data administration](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/discord.md#%E8%B3%87%E6%96%99%E4%BD%BF%E7%94%A8%E8%88%87%E7%AE%A1%E7%90%86) (Traditional Chinese).
 
 Network restrictions and platform changes may prevent reading. The fetcher rejects private/local addresses and does not inherit environment HTTP proxies or the Discord adapter's proxy settings. Other plugins and Discord's native previews remain independently configured.

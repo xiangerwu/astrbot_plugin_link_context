@@ -8,10 +8,24 @@
 | --- | --- | --- |
 | 圖片直接網址 | JPG／PNG／WebP／GIF，包含 Discord 附件圖片連結；GIF 最多抽取 8 幀 | 需有圖片副檔名；保留簽名查詢參數，但已過期連結無法下載 |
 | PTT | HTML 主文、推文、作者、內嵌及文字／超連結中的圖片 | 已刪文、連線限制仍會失敗；外連圖片可能無法下載 |
-| Twitter / X | FxEmbed 公開貼文 API，正文、引用文字、配圖 | 連結 ID 會送到第三方；不支援私密／需登入內容 |
-| Threads | Chromium 載入後核對貼文 shortcode 的結構化資料 | 沒有正文時只取核對過網址的公開預覽，明確標示缺漏；預覽不提供配圖 |
-| Bilibili | 影片資訊 API、動態／Opus 圖文 API，支援短網址 | 僅影片標題、簡介、封面；風控可能回傳 412，Cookie 也不保證成功 |
-| 其他網頁 | HTML article／main／body 文字與圖片 | 不保證動態、登入、付費牆內容；不解析 PDF／檔案下載 |
+| Twitter / X | FxEmbed，失敗時改用 VXTwitter；核對貼文 ID | 第三方公開貼文、引用與圖片；不支援私密貼文 |
+| Threads | 先解析分享轉址，讀取目標貼文靜態 JSON 或核對網址的公開預覽；不足才啟動 Chromium | 有 JSON 時保留正文與配圖；只有預覽時不把頭像當配圖，文字可能截斷 |
+| Bilibili | 官方影片／動態 API；失敗時讀取 vxbilibili 公開預覽，支援可轉址的短網址 | 預覽可能截斷；影片仍只有標題、簡介、封面 |
+| Instagram | oginstagram，失敗時 vxinstagram 預覽；貼文、Reels、限時動態網址 | 取決於服務是否仍能取得公開內容；不是完整相簿，過期限動／私密內容不可保證 |
+| Facebook | facebed 公開預覽，含分享網址與 Reels | 不登入 Facebook；預覽可能截斷或失效 |
+| TikTok | 短網址轉址後讀 tnktok／tiktokez 預覽 | 僅文字與預覽圖，未觀看影片 |
+| Bluesky | 核對 DID 與貼文 URI 的官方 API，失敗時 bskx JSON | 公開文字、配圖與影片存在標記；不讀整串回覆 |
+| Misskey.io | notes/show API，核對 note ID | 目前僅 misskey.io；正文、CW、引用文字與圖片，不支援其他實例 |
+| 巴哈姆特 | 場外／論壇及小屋頁面 Open Graph 預覽 | 不新增帳密登入；需要年齡、手機驗證或會員登入的內容會失敗 |
+| Plurk | 公開貼文的文字區塊與圖片 | 不登入、不讀整串回應 |
+| Pixiv | 作品 AJAX API，失敗時 phixiv 預覽 | 作品說明與第一張預覽；不下載多頁全集或動畫 |
+| Steam Workshop | 公開作品詳情 API | 說明與預覽圖；不下載模組／遊戲檔案 |
+| PChome 24h | 商品與描述 JSONP API | 商品名稱、簡介、讀取時價格與圖片，價格／庫存可能變動 |
+| E-Hentai／ExHentai | E-Hentai 公開圖庫 API，核對 gallery ID | 僅圖庫標題、標籤與封面，不登入 ExHentai、不閱讀整本 |
+| nhentai | 圖庫 API，核對 ID／第一頁路徑 | 標題、標籤、頁數與第一頁，不閱讀整本 |
+| 其他網頁 | HTML article／main／body；無正文時嘗試公開 metadata 預覽 | 不保證動態、登入、付費牆內容；不解析 PDF／檔案下載 |
+
+0.2.0 的新增平台使用獨立資料讀取，不需要安裝 ermiana，也不會等待或讀取它在 Discord 的回覆。X／Bilibili 的主來源和預覽備援每次限時 5 秒；新增平台讀取合計最多 12 秒（不包含後續圖片模型）。Threads 原站快速讀取最多 5 秒，未取得可核對文字時仍可能進入較慢的瀏覽器流程。
 
 這不是「所有網址都能完整閱讀」的保證。失敗、處理中、截斷與未理解的圖片都會留在記錄裡，讓聊天模型知道哪些內容不能聲稱看過。
 

@@ -6,9 +6,9 @@
 
 ## 先了解本插件的讀取方式
 
-Threads 使用 Playwright／Chromium 載入頁面，再核對目標貼文 shortcode，避免誤讀推薦貼文。若沒有完整結構化資料，可能只保存來源一致的公開預覽；該預覽不提供配圖。
+0.2.0 起先解析 `/share/`、`/t/` 等網址的 HTTP 轉址，核對最終貼文 shortcode；優先讀取 HTML 中的結構化正文與配圖，或已核對來源的公開預覽。有可用結果時不啟動 Chromium。快速讀取失敗才使用 Playwright／Chromium；預覽文字可能截斷，且不把 `og:image` 頭像當成貼文配圖。
 
-目前只放行指定網域的 **GET** 請求，依賴 POST 的 GraphQL 等請求不會送出，也不協助互動登入或通過驗證挑戰。即使 Cookie 有效，依賴其他請求或登入狀態儲存的內容仍可能讀不到。Cookie 不能取代 Chromium 安裝，亦不是官方 Threads API 的 access token。
+目前只放行指定網域的 **GET** 請求，依賴 POST 的 GraphQL 等請求不會送出，也不協助互動登入或通過驗證挑戰。即使 Cookie 有效，依賴其他請求或登入狀態儲存的內容仍可能讀不到。瀏覽器備援仍需要 Chromium 安裝，亦不是官方 Threads API 的 access token。
 
 只使用自己有權管理的帳號。登入 Cookie 可能代表帳號身分，不是唯讀 API 金鑰；不要將只有該帳號能看到、卻不適合提供給群組與模型的內容拿來測試。
 

@@ -133,6 +133,22 @@ class ParsingTests(Files):
 
 
 class AsyncTests(unittest.IsolatedAsyncioTestCase):
+    async def test_threads_share_preview_skips_browser(self):
+        final = "https://www.threads.com/@alice/post/target"
+        html = f'<meta property="og:url" content="{final}"><meta property="og:description" content="目標正文">'.encode()
+        web = types.SimpleNamespace(
+            read=AsyncMock(return_value=(final, "text/html", html))
+        )
+        with patch(
+            "playwright.async_api.async_playwright",
+            side_effect=AssertionError("preview must not launch a browser"),
+        ):
+            page = await fetch.Reader(web).read("https://www.threads.com/share/short")
+        self.assertEqual(page.url, final)
+        self.assertEqual(page.text, "目標正文")
+        self.assertIn("公開預覽", page.notes[0])
+        web.read.assert_awaited_once()
+
     async def test_direct_gif_link_and_ordered_frames(self):
         from PIL import Image
 
@@ -205,7 +221,7 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
                 yield b"public preview"
 
         session = types.SimpleNamespace(
-            get=unittest.mock.Mock(
+            request=unittest.mock.Mock(
                 side_effect=[
                     Response(
                         302, {"Location": "http://www.threads.com/@a/post/target"}
@@ -217,7 +233,7 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
         web.session = session
         try:
             await web.read("https://www.threads.com/@a/post/target")
-            requests = session.get.call_args_list
+            requests = session.request.call_args_list
             self.assertIn("Cookie", requests[0].kwargs["headers"])
             self.assertNotIn("Cookie", requests[1].kwargs["headers"])
         finally:
@@ -244,7 +260,7 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
                 yield b"efgh"
                 raise AssertionError("Must stop as soon as the byte limit is exceeded")
 
-        web.session = types.SimpleNamespace(get=lambda *a, **kw: Response())
+        web.session = types.SimpleNamespace(request=lambda *a, **kw: Response())
         try:
             with self.assertRaises(fetch.ReadError):
                 await web.read("https://example.com/large", limit=6)
@@ -298,12 +314,14 @@ class AsyncTests(unittest.IsolatedAsyncioTestCase):
             async def __aexit__(self, *args):
                 pass
 
-        session = types.SimpleNamespace(get=unittest.mock.Mock(return_value=Response()))
+        session = types.SimpleNamespace(
+            request=unittest.mock.Mock(return_value=Response())
+        )
         web.session = session
         try:
             with self.assertRaises(fetch.ReadError):
                 await web.read("https://example.com/redirect")
-            self.assertEqual(session.get.call_count, 1)
+            self.assertEqual(session.request.call_count, 1)
         finally:
             await real_session.close()
 

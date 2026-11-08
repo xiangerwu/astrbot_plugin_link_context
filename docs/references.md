@@ -2,11 +2,11 @@
 
 [返回首頁](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.md) · [English overview](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/README.en.md)
 
-查閱日期：2026-11-07。本專案參考既有專案的讀取途徑、API 欄位與插件整合方式，獨立實作靜默流程，沒有把下列專案整包複製或當作執行依賴。以下分清「提供資料給聊天模型」與「直接輸出解析結果」；有解析能力不代表符合靜默需求。
+查閱日期：2026-11-08。本專案參考既有專案的讀取途徑、API 欄位與插件整合方式，獨立實作靜默流程，沒有把下列專案整包複製或當作執行依賴。以下分清「提供資料給聊天模型」與「直接輸出解析結果」；有解析能力不代表符合靜默需求。
 
 | 專案 | 實際查閱 | 參考與取捨 |
 | --- | --- | --- |
-| [canaria3406/ermiana](https://github.com/canaria3406/ermiana/tree/3a64cab7937c71b5c243cd3c990d60d05e46f336) | README、LICENSE、preview-service、PTT／X／Threads／Bilibili providers、Discord client／message-handler、Threads mirror service | MIT。參考擷取與輸出分層，以及 PTT 正文中的圖片網址、anchor 與作者欄位；獨立 Python 實作，不移植 JS 原始碼。保留推文，不採用其為 embed 裁短正文的處理。Threads／Bilibili 主要回傳改寫的預覽網址，不能當成已取得完整正文；未加入鏡像轉發依賴。 |
+| [canaria3406/ermiana](https://github.com/canaria3406/ermiana/tree/3a64cab7937c71b5c243cd3c990d60d05e46f336) | README、LICENSE、preview-service、PTT／X／Threads／Bilibili providers、Discord client／message-handler、Threads mirror service | MIT。參考擷取與輸出分層，以及 PTT 正文中的圖片網址、anchor 與作者欄位；獨立 Python 實作，不移植 JS 原始碼。保留推文，不採用其為 embed 裁短正文的處理。0.2.0 另對照全部平台 provider、鏡像服務與上游 API；新增 Instagram／Facebook／TikTok 預覽讀取、Bluesky／Misskey／Pixiv／Steam／PChome／圖庫 API，以及巴哈／Plurk 擷取。X 增加 VXTwitter 備援，Bilibili 增加 vxbilibili 預覽。這些服務回傳的預覽會實際擷取並標記缺漏，不只改寫網址，也不轉發卡片。不移植登入帳密、Discord 發送、影片下載或整本翻頁。 |
 | [Dashu-Li/astrbot_plugin_web_access](https://github.com/Dashu-Li/astrbot_plugin_web_access) | README、main.py | 網頁工具回傳正文與 next_offset，由會話模型使用；不額外做文字摘要。本插件採用已讀記錄分頁工具，但加上群組被動背景閱讀。它本身不是貼連結就背景讀取。 |
 | [ZAKOsiesta/astrbot_plugin_video_context](https://github.com/ZAKOsiesta/astrbot_plugin_video_context) | README、main.py | 群組被動分享保持靜默；在 on_llm_request 用暫時內容供目前人格回答。它的群組被動階段只記錄、不呼叫模型，與本插件背景讀圖不同。依目前需求不引入其影片、字幕、轉錄功能。 |
 | [drdon1234/astrbot_plugin_media_parser](https://github.com/drdon1234/astrbot_plugin_media_parser) | README、core/parser/platform/twitter.py、bilibili.py | X 使用 FxEmbed、Bilibili 影片資訊與動態 API 的欄位。本插件只把資料交給閱讀記錄，不採用下載／轉發結果流程。 |

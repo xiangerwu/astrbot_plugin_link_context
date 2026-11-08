@@ -15,7 +15,7 @@
 
 部署者應先取得伺服器管理者的允許，清楚告知成員：貼出的連結會被擷取、配圖送至所選模型理解，閱讀記錄會在同一會話提供給聊天模型。可透過 AstrBot 的會話插件設定停用本插件，或撤銷 Bot 的頻道存取權。不要將 Discord Bot Token、平台 Cookie 或私密網址貼到公開 Issue。
 
-本插件保存連結、分享者顯示名稱、會話識別、分享時間及閱讀結果，不保存整段 Discord 原始訊息，也不做模型訓練。X 貼文 ID 會送給 FxEmbed；網頁／圖片會向其來源站請求；文字記錄與圖片會按功能需要交給你配置的模型提供商。部署者仍須確認該提供商的資料使用政策，並提供自己的隱私告知、聯絡方式及刪除申請管道。[Discord Developer Policy](https://support-dev.discord.com/hc/en-us/articles/8563934450327-Discord-Developer-Policy)
+本插件保存連結、分享者顯示名稱、會話識別、分享時間及閱讀結果，不保存整段 Discord 原始訊息，也不做模型訓練。X 貼文 ID 會送給 FxEmbed／VXTwitter；其他平台的公開預覽備援會將對應網址送給 [平台支援表](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/usage.md#平台支援)列出的第三方；網頁／圖片會向其來源站請求；文字記錄與圖片會按功能需要交給你配置的模型提供商。部署者仍須確認該提供商的資料使用政策，並提供自己的隱私告知、聯絡方式及刪除申請管道。[Discord Developer Policy](https://support-dev.discord.com/hc/en-us/articles/8563934450327-Discord-Developer-Policy)
 
 到期資料在插件啟動或收到含可辨識連結的新群組訊息時清理；閒置／停用期間不會定時刪除，但查詢時會排除過期記錄。原 Discord 訊息被刪除不會自動清除閱讀記錄。若收到刪除申請，管理者應先停用插件，針對 `links.sqlite3` 的 `links` 表按會話／連結刪除對應記錄，並處理 AstrBot 對話歷史與備份中可能保留的副本；需要協助時請勿在公開 Issue 附上資料庫。暫存清理失敗會留日誌，管理者也應處理遺留工作檔。
 

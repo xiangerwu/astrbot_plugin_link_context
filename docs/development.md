@@ -16,12 +16,14 @@ astrbot_plugin_link_context/
 ├── LICENSE
 ├── core/
 │   ├── __init__.py
-│   ├── fetch.py            # 網路邊界與平台內容擷取
+│   ├── fetch.py            # 網路邊界與既有平台內容擷取
+│   ├── platforms.py        # 新增平台 API、預覽與備援
 │   ├── media.py            # 圖片準備與既有模型提供商整合
 │   └── store.py            # SQLite 近期記錄與上下文預算
 ├── tests/
 │   ├── __init__.py
-│   └── test_link_context.py
+│   ├── test_link_context.py
+│   └── test_platforms.py
 ├── assets/
 │   └── intro.png           # README 介紹圖
 └── docs/
@@ -49,7 +51,7 @@ astrbot_plugin_link_context/
 python -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
-2026-11-07 本機已通過 **22 項測試**（Python 3.14、Windows），覆蓋範圍如下。AstrBot、模型與遠端站台由邊界替身替代；瀏覽器測試使用本機 Chromium 與受控頁面，不能當作 Linux 部署、真實站台成功率或 OpenAI 模型效果驗證。
+2026-11-08 本機已通過 **33 項測試**（Python 3.14、Windows），覆蓋範圍如下。AstrBot、模型與遠端站台由邊界替身替代；瀏覽器測試使用本機 Chromium 與受控頁面，不能當作 Linux 部署、真實站台成功率或 OpenAI 模型效果驗證。
 
 | 範圍 | 已檢查行為 |
 | --- | --- |
@@ -83,3 +85,9 @@ ruff check .
 3. 在另一頻道／討論串詢問同一內容，確認沒有跨會話取得記錄。
 4. 貼一則有圖片的連結，確認所選 OpenAI 圖片模型能描述；這一步會產生模型費用。
 5. 貼影片連結並詢問畫面／語音，確認 Bot 說明未觀看；重載後再查已完成的文字記錄，確認保存正常。
+
+## 0.2.0 驗證補充
+
+新增測試涵蓋 Threads 分享轉址的快速讀取、不啟動瀏覽器、靜態配圖保留、真實 Chromium 備援轉址，以及每個新增平台的資料邊界；另檢查預覽來源切換、登入頁／首頁拒絕、API 貼文 ID、POST 不轉送重新導向與 Cookie 隔離。所有模型呼叫仍沿用既有提供商，未修改模型或提示。
+
+2026-11-08 無 Cookie 實際連線：使用者提供的 Threads 分享連結透過 Reader 取得 131 字公開預覽，約 0.84–0.92 秒；Facebook 分享預覽、Bilibili vxbilibili 備援、Steam Workshop、PTT、nhentai 圖庫資料均取得。巴哈測試頁為不可用頁面或年齡／手機驗證限制，正確拒絕。其他平台本次使用受控 HTTP/API fixture 驗證，未宣稱全部真實站台可用。連線速度是當次本機測量，不保證部署端速度。測試只檢查擷取，不下載這批實測配圖或呼叫圖片模型。

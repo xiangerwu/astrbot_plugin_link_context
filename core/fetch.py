@@ -105,17 +105,34 @@ class Web:
             or host_is(url, "hdslb.com")
         ):
             headers["Referer"] = "https://www.bilibili.com/"
+        if host_is(url, "pximg.net"):
+            headers["Referer"] = "https://www.pixiv.net/"
         return headers
 
     async def read(
-        self, url: str, *, limit=4 * 1024 * 1024, destination: Path | None = None
+        self,
+        url: str,
+        *,
+        limit=4 * 1024 * 1024,
+        destination: Path | None = None,
+        method="GET",
+        json_data=None,
+        form_data=None,
+        headers=None,
     ):
         for _ in range(6):
             url = checked_url(url)
-            async with self.session.get(
-                url, headers=self.headers(url), allow_redirects=False
+            async with self.session.request(
+                method,
+                url,
+                headers={**self.headers(url), **(headers or {})},
+                allow_redirects=False,
+                json=json_data,
+                data=form_data,
             ) as response:
                 if response.status in (301, 302, 303, 307, 308):
+                    if method != "GET":
+                        raise ReadError("資料 API 重新導向，未轉送請求")
                     url = urljoin(url, response.headers.get("Location", ""))
                     continue
                 if response.status != 200:
@@ -139,8 +156,8 @@ class Web:
                 return url, response.headers.get("Content-Type", ""), b"".join(chunks)
         raise ReadError("連結重新導向次數過多")
 
-    async def json(self, url):
-        _, _, body = await self.read(url)
+    async def json(self, url, **kwargs):
+        _, _, body = await self.read(url, **kwargs)
         try:
             return json.loads(body)
         except (ValueError, UnicodeError):
@@ -163,6 +180,8 @@ class Reader:
         self.web = web
 
     async def read(self, url: str) -> Page:
+        from .platforms import FETCH_ERRORS, preview, read_platform
+
         url = checked_url(url)
         if re.search(r"\.(?:jpe?g|png|gif|webp)$", urlsplit(url).path, re.I):
             # Keep signed queries intact; describe() downloads and validates the image.
@@ -174,24 +193,45 @@ class Reader:
         if host_is(url, "bilibili.com") and (
             host_is(url, "t.bilibili.com") or "/opus/" in urlsplit(url).path
         ):
-            return await self.bilibili_post(url)
+            try:
+                return await asyncio.wait_for(self.bilibili_post(url), 5)
+            except FETCH_ERRORS:
+                identifier = re.fullmatch(r"/(?:opus/)?(\d+)/?", urlsplit(url).path)
+                if not identifier:
+                    raise
+                return await preview(
+                    self.web,
+                    "https://www.bilibili.com/opus/" + identifier[1],
+                    ("www.vxbilibili.com",),
+                )
         if host_is(url, "bilibili.com") and re.search(
             r"/(?:video/|BV|av)", urlsplit(url).path
         ):
-            return await self.bilibili(url)
+            try:
+                return await asyncio.wait_for(self.bilibili(url), 5)
+            except FETCH_ERRORS:
+                page = await preview(self.web, url, ("www.vxbilibili.com",))
+                page.has_video = True
+                page.notes.append("僅影片預覽資料，未觀看影片。")
+                return page
         if host_is(url, "threads.net") or host_is(url, "threads.com"):
             return await self.threads(url)
+        extra = await asyncio.wait_for(read_platform(self.web, url), 12)
+        if extra is not None:
+            return extra
         final, content_type, body = await self.web.read(url)
         if "html" not in content_type:
             raise ReadError("此連結不是可讀取的網頁；目前不解析文件下載或直播串流")
         return parse_html(final, body)
 
     async def twitter(self, url):
+        from .platforms import twitter_data
+
         match = re.search(r"/status/(\d+)", urlsplit(url).path)
         if not match:
             raise ReadError("請提供 X 單篇貼文連結")
         # FxEmbed is the same extraction service used by media_parser; no forwarding.
-        data = await self.web.json(f"https://api.fxtwitter.com/status/{match[1]}")
+        data = await twitter_data(self.web, match[1])
         tweet = data.get("tweet") or {}
         if str(tweet.get("id")) != match[1]:
             raise ReadError("X 解析服務未提供目標貼文，可能已刪除或需要登入")
@@ -212,7 +252,9 @@ class Reader:
             text=text,
             images=[p["url"] for p in media.get("photos", []) if p.get("url")],
             has_video=bool(media.get("videos")),
-            notes=["X 內容經第三方 FxEmbed 讀取，只能取得該服務可見的公開內容。"],
+            notes=[
+                "X 內容經第三方 FxEmbed／VXTwitter 讀取，只能取得該服務可見的公開內容。"
+            ],
         )
 
     async def bilibili(self, url):
@@ -277,6 +319,14 @@ class Reader:
         return page
 
     async def threads(self, url):
+        try:
+            final, kind, body = await asyncio.wait_for(self.web.read(url), 5)
+            if any(host_is(final, h) for h in ("threads.com", "threads.net")):
+                url = final
+                if "html" in kind:
+                    return threads_preview(url, body.decode("utf-8", errors="replace"))
+        except (ReadError, aiohttp.ClientError, asyncio.TimeoutError):
+            pass
         # Browser rendering follows threads-dl's approach; exact post identity is required.
         from playwright.async_api import async_playwright
 
@@ -301,7 +351,10 @@ class Reader:
                         ]
                     )
 
+                navigation_url = url
+
                 async def route_request(route):
+                    nonlocal navigation_url
                     req = route.request
                     if (
                         req.resource_type in ("image", "media", "font")
@@ -320,7 +373,9 @@ class Reader:
                         return
                     try:
                         # Fulfil through the checked resolver; Chromium never fetches arbitrary URLs.
-                        _, kind, body = await self.web.read(req.url)
+                        final, kind, body = await self.web.read(req.url)
+                        if req.is_navigation_request() and req.frame == page.main_frame:
+                            navigation_url = final
                         await route.fulfill(status=200, content_type=kind, body=body)
                     except (ReadError, aiohttp.ClientError, asyncio.TimeoutError):
                         await route.abort()
@@ -328,6 +383,11 @@ class Reader:
                 await context.route("**/*", route_request)
                 page = await context.new_page()
                 await page.goto(url, wait_until="domcontentloaded", timeout=45000)
+                if navigation_url != page.url:
+                    # Explicit navigation is intercepted again; a fulfilled 302 can bypass routing.
+                    await page.goto(
+                        navigation_url, wait_until="domcontentloaded", timeout=45000
+                    )
                 for _ in range(15):
                     match = re.search(r"/post/([\w-]+)", urlsplit(page.url).path)
                     if match:
@@ -386,6 +446,46 @@ def threads_preview(url: str, html: str) -> Page:
     ):
         raise ReadError("Threads 未取得可核對的貼文正文；可能是登入限制或網頁改版")
     title = soup.find("meta", property="og:title")
+    # Static JSON often already contains the exact post and its photos; no browser needed.
+    stack = []
+    for script in soup.select('script[type="application/json"]'):
+        try:
+            stack.append(json.loads(script.get_text()))
+        except ValueError:
+            continue
+    while stack:
+        node = stack.pop()
+        if isinstance(node, list):
+            stack.extend(node)
+        elif isinstance(node, dict):
+            if (
+                node.get("code") == expected[1]
+                and node.get("user")
+                and any(
+                    k in node for k in ("caption", "image_versions2", "video_versions")
+                )
+            ):
+                media = node.get("carousel_media") or [node]
+                images = []
+                for item in media:
+                    candidates = (item.get("image_versions2") or {}).get(
+                        "candidates"
+                    ) or []
+                    if (
+                        not item.get("video_versions")
+                        and candidates
+                        and candidates[0].get("url")
+                    ):
+                        images.append(candidates[0]["url"])
+                return Page(
+                    url,
+                    "Threads 貼文",
+                    node["user"].get("username", ""),
+                    (node.get("caption") or {}).get("text", ""),
+                    images,
+                    any(item.get("video_versions") for item in media),
+                )
+            stack.extend(node.values())
     # og:image can be the author's avatar, so it is not evidence of a post image.
     return Page(
         url,
@@ -414,7 +514,11 @@ def parse_html(url: str, body: bytes) -> Page:
         else soup.find("article") or soup.find("main") or soup.body
     )
     if root is None:
-        raise ReadError("網頁沒有可讀取的正文")
+        if host_is(url, "ptt.cc"):
+            raise ReadError("網頁沒有可讀取的正文")
+        from .platforms import preview_page
+
+        return preview_page(url, body)
     for tag in root.select("script, style, nav, footer, header, noscript, form"):
         tag.decompose()
     page.text = root.get_text("\n", strip=True)
@@ -453,7 +557,11 @@ def parse_html(url: str, body: bytes) -> Page:
         root.find("video") or meta("og:video") or meta("og:video:url")
     )
     if not page.text and not page.images and not page.has_video:
-        raise ReadError("網頁沒有可理解的內容")
+        if host_is(url, "ptt.cc"):
+            raise ReadError("網頁沒有可理解的內容")
+        from .platforms import preview_page
+
+        return preview_page(url, body)
     if not host_is(url, "ptt.cc"):
         page.notes.append(
             "一般網頁以可取得的 HTML 正文為準，動態載入／登入後內容可能缺漏。"

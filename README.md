@@ -6,7 +6,7 @@
 
 讓 AstrBot 默默讀取群組分享的連結，在之後的聊天中自然參與討論。插件不自動轉發全文、摘要、配圖或完成通知，也不因連結而喚醒聊天。主要使用情境是 Discord 文字頻道與討論串。
 
-- 支援 PTT、Twitter / X、Threads、Bilibili 與一般 HTML 網頁，實際讀取範圍依來源而異。
+- 支援 PTT、X、Threads、Bilibili、Instagram、Facebook、Bluesky、Misskey.io、TikTok、巴哈姆特、Plurk、Pixiv、Steam Workshop、PChome 24h、E-Hentai／ExHentai、nhentai 與一般 HTML 網頁；各站的公開內容與預覽限制見[平台支援](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/usage.md#平台支援)。
 - 正文直接存成近期記錄；圖片透過 AstrBot 已配置的 OpenAI 圖片模型理解，每張圖會產生模型費用。
 - 支援 JPG／PNG／WebP／GIF 直接網址（含 Discord 圖片連結）；GIF 最多抽取 8 幀，合併一次讀圖請求，可能漏掉短暫動作且會增加圖片用量。
 - **不處理影片畫面、語音或字幕**；標題、簡介與封面不代表看過影片。
@@ -57,9 +57,11 @@ Linux 系統依賴、Docker、Cookie 與各項配置見[安裝與配置](https:/
 
 ## 已知限制
 
+0.2.0 起 Threads 分享網址先解析轉址，優先讀取可核對的靜態貼文／公開預覽；已有文字時不必啟動 Chromium。其他新增平台參考 ermiana 的公開 API 與預覽來源，只保存資料，不轉發卡片，也不讀取其他 Bot 的 Discord 訊息。
+
 Threads 可能只有公開預覽，Bilibili 可能被風控拒絕；並非所有網址都能完整讀取。`ready` 表示流程完成，仍可能包含未讀圖片或截斷。影片內容、私訊、歷史訊息、訊息編輯／刪除同步與永久知識庫不在目前範圍。其他插件與 Discord 自己的連結預覽需要各自設定。
 
-已有 22 項自動化測試，包含事件排序、GIF 8 幀抽樣與短 GIF 不重複幀檢查。自動化測試不等於完整部署驗收。測試邊界與實際站台檢查結果見[開發與驗證](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/development.md)。
+已有 33 項自動化測試，包含事件排序、GIF 8 幀抽樣與短 GIF 不重複幀檢查。自動化測試不等於完整部署驗收。測試邊界與實際站台檢查結果見[開發與驗證](https://github.com/xiangerwu/astrbot_plugin_link_context/blob/main/docs/development.md)。
 
 ## 授權與致謝
 
